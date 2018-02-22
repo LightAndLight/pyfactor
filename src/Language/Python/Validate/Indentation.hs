@@ -20,12 +20,20 @@ validateBlockIndentation
 validateBlockIndentation = go Nothing
   where
     go _ [] = pure []
-    go a ((ann, ws, st):xs) =
-      case a of
-        Nothing -> liftA2 (:) ((,,) ann ws <$> validateStatementIndentation st) (go (Just ws) xs)
-        Just ws'
-          | ws == ws' -> liftA2 (:) ((,,) ann ws <$> validateStatementIndentation st) (go a xs)
-          | otherwise -> Failure [_BadIndent # (ws', ws, ann)] <*> (go a xs)
+    go a ((ann, ws, st):xs)
+      | null ws = Failure [_ExpectedIndent # ann] <*> (go a xs)
+      | otherwise =
+          case a of
+            Nothing ->
+              liftA2 (:)
+                ((,,) ann ws <$> validateStatementIndentation st)
+              (go (Just ws) xs)
+            Just ws'
+              | ws == ws' ->
+                  liftA2 (:)
+                    ((,,) ann ws <$> validateStatementIndentation st)
+                    (go a xs)
+              | otherwise -> Failure [_WrongIndent # (ws', ws, ann)] <*> (go a xs)
 
 validateExprIndentation
   :: AsIndentationError e v a

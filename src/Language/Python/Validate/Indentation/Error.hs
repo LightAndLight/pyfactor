@@ -6,7 +6,9 @@ import Language.Python.Internal.Syntax
 
 import Control.Lens.TH
 
-data IndentationError (v :: [*]) a = BadIndent [Whitespace] [Whitespace] a
+data IndentationError (v :: [*]) a
+  = WrongIndent [Whitespace] [Whitespace] a
+  | ExpectedIndent a
   deriving (Eq, Show)
 
 makeClassyPrisms ''IndentationError

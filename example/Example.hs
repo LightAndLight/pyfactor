@@ -17,7 +17,7 @@ append_to a =
     [ PositionalParam a "element"
     , KeywordParam a "to" (List a [])
     ]
-    [ (a, replicate 4 Space, Expr a $ Call a (Deref a (Ident a "to") "append") (NoArgs a))
+    [ (a, replicate 4 Space, Expr a $ Call a (Deref a (Ident a "to") "append") (PositionalArg a (Ident a "element") $ NoArgs a))
     , (a, replicate 4 Space, Return a (Ident a "to"))
     ]
 
