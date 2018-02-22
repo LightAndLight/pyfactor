@@ -50,18 +50,22 @@ append_to'' =
     , return_ "to"
     ]
 
+-- | Fix mutable default arguments
 fixMDA input = do
   (_, name, params, body) <- input ^? _Fundef
   targetParam <- params ^? folded._KeywordParam.filtered (isMutable._kpExpr)
+
   let
     pname = targetParam ^. kpName
+
     newparams =
-      params & traverse._KeywordParam.filtered ((==pname)._kpName).kpExpr .~ none_
+      params & traverse._KeywordParam.filtered (isMutable._kpExpr).kpExpr .~ none_
 
     fixed =
-        if_ (var_ pname `is_` none_) [ var_ pname .= list_ [] ]
+      if_ (var_ pname `is_` none_) [ var_ pname .= list_ [] ]
 
-  pure $ def_ name newparams (fixed : (body ^.. _Statements))
+  pure $
+    def_ name newparams (fixed : (body ^.. _Statements))
 
 {-
 def append_to(element, to=None):
