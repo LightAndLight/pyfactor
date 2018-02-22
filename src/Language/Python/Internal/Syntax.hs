@@ -23,8 +23,8 @@ data Statement (v :: [*]) a
   | Assign a (Expr v a) (Expr v a)
   deriving (Eq, Show)
 instance Plated (Statement v a) where
-  plate f p@(Fundef _ _ _ sts) = traverse f sts $> p
-  plate f p@(If _ _ sts) = traverse f sts $> p
+  plate f (Fundef a b c sts) = Fundef a b c <$> traverse f sts
+  plate f (If a b sts) = If a b <$> traverse f sts
   plate _ p = pure p
 
 data Expr (v :: [*]) a
