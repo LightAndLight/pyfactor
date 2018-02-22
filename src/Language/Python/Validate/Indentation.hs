@@ -3,7 +3,7 @@
 module Language.Python.Validate.Indentation where
 
 import Control.Applicative
-import Control.Lens ((#))
+import Control.Lens ((#), _Wrapped, view, from)
 import Data.Coerce
 import Data.Type.Set
 import Data.Validate
@@ -15,9 +15,11 @@ data Indentation
 
 validateBlockIndentation
   :: AsIndentationError e v a
-  => [(a, [Whitespace], Statement v a)]
-  -> Validate [e] [(a, [Whitespace], Statement (Nub (Indentation ': v)) a)]
-validateBlockIndentation = go Nothing
+  => Block v a
+  -> Validate [e] (Block (Nub (Indentation ': v)) a)
+validateBlockIndentation a =
+  view (from _Wrapped) <$>
+  go Nothing (view _Wrapped a)
   where
     go _ [] = pure []
     go a ((ann, ws, st):xs)

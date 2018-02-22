@@ -17,9 +17,10 @@ append_to a =
     [ PositionalParam a "element"
     , KeywordParam a "to" (List a [])
     ]
-    [ (a, replicate 4 Space, Expr a $ Call a (Deref a (Ident a "to") "append") (PositionalArg a (Ident a "element") $ NoArgs a))
-    , (a, replicate 4 Space, Return a (Ident a "to"))
-    ]
+    (Block
+     [ (a, replicate 4 Space, Expr a $ Call a (Deref a (Ident a "to") "append") (PositionalArg a (Ident a "element") $ NoArgs a))
+     , (a, replicate 4 Space, Return a (Ident a "to"))
+     ])
 
 
 {-
@@ -58,7 +59,7 @@ fixMDA input = do
     fixed =
         if_ (var_ paramname `is_` none_) [ var_ paramname .= list_ [] ]
 
-  pure $ def_ name newparams (fixed : (body ^.. folded._3))
+  pure $ def_ name newparams (fixed : (body ^.. _Statements))
 
 {-
 def append_to(element, to=None):
