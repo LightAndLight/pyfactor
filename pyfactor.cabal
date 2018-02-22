@@ -16,16 +16,22 @@ extra-source-files:  ChangeLog.md
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     Example
-                     , Data.Validate
+  exposed-modules:     Data.Validate
                      , Language.Python.Syntax
                      , Language.Python.Internal.Prisms
                      , Language.Python.Internal.Render
                      , Language.Python.Internal.Syntax
                      , Language.Python.Validate.Syntax
                      , Language.Python.Validate.Syntax.Error
-  -- other-modules:       
-  -- other-extensions:    
   build-depends:       base >=4.9 && <4.11, lens, type-level-sets
   hs-source-dirs:      src
   default-language:    Haskell2010
+  ghc-options:         -O2 -Wall
+
+executable example
+  main-is:             Main.hs
+  other-modules:       Example
+  hs-source-dirs:      example
+  build-depends:       base >=4.9 && <4.11, lens, pyfactor
+  default-language:    Haskell2010
+  ghc-options:         -O2 -Wall
