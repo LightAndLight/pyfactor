@@ -18,7 +18,7 @@ cabal-version:       >=1.10
 library
   exposed-modules:     Data.Validate
                      , Language.Python.Syntax
-                     , Language.Python.Internal.Prisms
+                     , Language.Python.Internal.Optics
                      , Language.Python.Internal.Render
                      , Language.Python.Internal.Syntax
                      , Language.Python.Validate.Syntax

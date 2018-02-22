@@ -2,8 +2,8 @@
 module Example where
 
 import Control.Lens ((^?), (&), (.~), folded, _2, _3, view, filtered)
+import Language.Python.Internal.Optics
 import Language.Python.Internal.Syntax
-import Language.Python.Internal.Prisms
 import Language.Python.Syntax
 
 {-

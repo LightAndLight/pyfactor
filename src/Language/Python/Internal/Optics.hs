@@ -1,5 +1,5 @@
 {-# language DataKinds, LambdaCase, ViewPatterns #-}
-module Language.Python.Internal.Prisms where
+module Language.Python.Internal.Optics where
 
 import Control.Lens
 import Data.Coerce
