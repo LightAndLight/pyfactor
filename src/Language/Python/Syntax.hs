@@ -64,5 +64,8 @@ var_ = Ident ()
 none_ :: Expr '[] ()
 none_ = None ()
 
+pass_ :: Statement '[] ()
+pass_ = Pass ()
+
 (.=) :: Expr '[] () -> Expr '[] () -> Statement '[] ()
 (.=) = Assign ()

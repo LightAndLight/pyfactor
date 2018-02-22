@@ -24,6 +24,7 @@ data Statement (v :: [*]) a
   | Expr a (Expr v a)
   | If a (Expr v a) [(a, [Whitespace], Statement v a)]
   | Assign a (Expr v a) (Expr v a)
+  | Pass a
   deriving (Eq, Show)
 instance Plated (Statement v a) where
   plate f (Fundef a b c sts) = Fundef a b c <$> (traverse._3) f sts

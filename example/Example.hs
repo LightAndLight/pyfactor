@@ -33,10 +33,14 @@ isMutable None{} = False
 isMutable _ = True
 
 append_to' =
-  def_ "append_to" [ p_ "element", k_ "to" (list_ []) ]
-    [ expr_ $ call_ ("to" .> "append") [ "element" ]
-    , return_ "to"
-    ]
+  let
+    d = def_ "append_to" [ p_ "element", k_ "to" (list_ []) ]
+  in
+    d
+      [ d [pass_]
+      , expr_ $ call_ ("to" .> "append") [ "element" ]
+      , return_ "to"
+      ]
 
 append_to'' =
   def_ "append_to" [ p_ "element", k_ "to" (list_ []), k_ "to2" (list_ []) ]

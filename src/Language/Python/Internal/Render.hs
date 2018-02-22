@@ -32,6 +32,7 @@ renderStatement (If _ expr body) =
   ("if " <> renderExpr expr <> ":") :
   (body >>= \(_, a, b) -> (foldMap renderWhitespace a <>) <$> renderStatement b)
 renderStatement (Assign _ lvalue rvalue) = [renderExpr lvalue <> " = " <> renderExpr rvalue]
+renderStatement (Pass _) = ["pass"]
 
 renderArgs :: Args v a -> String
 renderArgs a = "(" <> go a <> ")"

@@ -22,6 +22,7 @@ instance HasExprs Statement where
   _Exprs f (Expr a e) = Expr a <$> f e
   _Exprs f (If a e sts) = If a <$> f e <*> (traverse._3._Exprs) f sts
   _Exprs f (Assign a e1 e2) = Assign a <$> f e1 <*> f e2
+  _Exprs _ p@Pass{} = pure $ coerce p
 
 _KeywordParam
   :: Prism

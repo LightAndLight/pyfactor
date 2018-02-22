@@ -8,6 +8,7 @@ import Control.Applicative
 import Control.Lens ((#))
 import Control.Lens.Tuple
 import Control.Lens.Traversal
+import Data.Coerce
 import Data.Semigroup
 import Data.Type.Set
 import Data.Validate
@@ -65,6 +66,7 @@ validateStatementSyntax (Assign a lvalue rvalue) =
    then validateExprSyntax lvalue
    else Failure [_CannotAssignTo # (a, lvalue)]) <*>
   validateExprSyntax rvalue
+validateStatementSyntax p@Pass{} = pure $ coerce p
 
 canAssignTo :: Expr v a -> Bool
 canAssignTo None{} = False
