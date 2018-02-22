@@ -1,7 +1,7 @@
 {-# language OverloadedStrings #-}
 module Example where
 
-import Control.Lens ((^?), (&), (.~), folded, _2, _3, view, filtered)
+import Control.Lens ((^?), (&), (.~), (^..), folded, _2, _3, view, filtered)
 import Language.Python.Internal.Optics
 import Language.Python.Internal.Syntax
 import Language.Python.Syntax
@@ -17,8 +17,8 @@ append_to a =
     [ PositionalParam a "element"
     , KeywordParam a "to" (List a [])
     ]
-    [ Expr a $ Call a (Deref a (Ident a "to") "append") (NoArgs a)
-    , Return a (Ident a "to")
+    [ (a, replicate 4 Space, Expr a $ Call a (Deref a (Ident a "to") "append") (NoArgs a))
+    , (a, replicate 4 Space, Return a (Ident a "to"))
     ]
 
 
@@ -54,7 +54,7 @@ fixMDA input = do
     fixed =
         if_ (var_ paramname `is_` none_) [ var_ paramname .= list_ [] ]
 
-  pure $ def_ name newparams (fixed : body)
+  pure $ def_ name newparams (fixed : (body ^.. folded._3))
 
 {-
 def append_to(element, to=None):

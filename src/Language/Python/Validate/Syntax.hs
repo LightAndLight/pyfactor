@@ -6,73 +6,87 @@ module Language.Python.Validate.Syntax where
 
 import Control.Applicative
 import Control.Lens ((#))
+import Control.Lens.Tuple
+import Control.Lens.Traversal
 import Data.Semigroup
 import Data.Type.Set
 import Data.Validate
 import Language.Python.Internal.Syntax
+import Language.Python.Validate.Indentation
 import Language.Python.Validate.Syntax.Error
 
 data Syntax
 
-validateExpr :: AsSyntaxError e v a => Expr v a -> Validate [e] (Expr (Nub (Syntax ': v)) a)
-validateExpr (Ident a name) = pure $ Ident a name
-validateExpr (List a exprs) = List a <$> traverse validateExpr exprs
-validateExpr (Deref a expr name) =
+validateExprSyntax
+  :: ( AsSyntaxError e v a
+     , Member Indentation v
+     )
+  => Expr v a
+  -> Validate [e] (Expr (Nub (Syntax ': v)) a)
+validateExprSyntax (Ident a name) = pure $ Ident a name
+validateExprSyntax (List a exprs) = List a <$> traverse validateExprSyntax exprs
+validateExprSyntax (Deref a expr name) =
   Deref a <$>
-  validateExpr expr <*>
+  validateExprSyntax expr <*>
   pure name
-validateExpr (Call a expr args) =
+validateExprSyntax (Call a expr args) =
   Call a <$>
-  validateExpr expr <*>
-  validateArgs args
-validateExpr (None a) = pure $ None a
-validateExpr (Comp a op e1 e2) =
+  validateExprSyntax expr <*>
+  validateArgsSyntax args
+validateExprSyntax (None a) = pure $ None a
+validateExprSyntax (Comp a op e1 e2) =
   Comp a op <$>
-  validateExpr e1 <*>
-  validateExpr e2
+  validateExprSyntax e1 <*>
+  validateExprSyntax e2
 
-validateStatement
-  :: AsSyntaxError e v a
+validateStatementSyntax
+  :: ( AsSyntaxError e v a
+     , Member Indentation v
+     )
   => Statement v a
   -> Validate [e] (Statement (Nub (Syntax ': v)) a)
-validateStatement (Fundef a name params body) =
+validateStatementSyntax (Fundef a name params body) =
   Fundef a name <$>
-  validateParams params <*>
-  traverse validateStatement body
-validateStatement (Return a expr) =
+  validateParamsSyntax params <*>
+  traverseOf (traverse._3) validateStatementSyntax body
+validateStatementSyntax (Return a expr) =
   Return a <$>
-  validateExpr expr
-validateStatement (Expr a expr) =
+  validateExprSyntax expr
+validateStatementSyntax (Expr a expr) =
   Expr a <$>
-  validateExpr expr
-validateStatement (If a expr body) =
+  validateExprSyntax expr
+validateStatementSyntax (If a expr body) =
   If a <$>
-  validateExpr expr <*>
-  traverse validateStatement body
-validateStatement (Assign a lvalue rvalue) =
+  validateExprSyntax expr <*>
+  traverseOf (traverse._3) validateStatementSyntax body
+validateStatementSyntax (Assign a lvalue rvalue) =
   Assign a <$>
   (if canAssignTo lvalue
-   then validateExpr lvalue
+   then validateExprSyntax lvalue
    else Failure [_CannotAssignTo # (a, lvalue)]) <*>
-  validateExpr rvalue
+  validateExprSyntax rvalue
 
 canAssignTo :: Expr v a -> Bool
 canAssignTo None{} = False
 canAssignTo _ = True
 
-validateArgs
-  :: AsSyntaxError e v a
+validateArgsSyntax
+  :: ( AsSyntaxError e v a
+     , Member Indentation v
+     )
   => Args v a -> Validate [e] (Args (Nub (Syntax ': v)) a)
-validateArgs (NoArgs a) = pure $ NoArgs a
-validateArgs (PositionalArg a expr args) =
+validateArgsSyntax (NoArgs a) = pure $ NoArgs a
+validateArgsSyntax (PositionalArg a expr args) =
   PositionalArg a <$>
-  validateExpr expr <*>
-  validateArgs args
+  validateExprSyntax expr <*>
+  validateArgsSyntax args
 
-validateParams
-  :: AsSyntaxError e v a
+validateParamsSyntax
+  :: ( AsSyntaxError e v a
+     , Member Indentation v
+     )
   => Params v a -> Validate [e] (Params (Nub (Syntax ': v)) a)
-validateParams = go [] False
+validateParamsSyntax = go [] False
   where
     go _ _ [] = pure []
     go names False (PositionalParam a name : params)
@@ -88,5 +102,5 @@ validateParams = go [] False
         Failure errs <*> go (name:names) True params
     go names _ (KeywordParam a name expr : params) =
       liftA2 (:)
-        (KeywordParam a name <$> validateExpr expr)
+        (KeywordParam a name <$> validateExprSyntax expr)
         (go (name:names) True params)

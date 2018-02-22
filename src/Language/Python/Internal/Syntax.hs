@@ -1,6 +1,7 @@
 {-# language DataKinds, PolyKinds #-}
 module Language.Python.Internal.Syntax where
 
+import Control.Lens.Tuple
 import Control.Lens.Plated
 import Data.Functor
 
@@ -15,16 +16,18 @@ data Args (v :: [*]) a
   | PositionalArg a (Expr v a) (Args v a)
   deriving (Eq, Show)
 
+data Whitespace = Space | Tab | Continued [Whitespace] deriving (Eq, Show)
+
 data Statement (v :: [*]) a
-  = Fundef a String (Params v a) [Statement v a]
+  = Fundef a String (Params v a) [(a, [Whitespace], Statement v a)]
   | Return a (Expr v a)
   | Expr a (Expr v a)
-  | If a (Expr v a) [Statement v a]
+  | If a (Expr v a) [(a, [Whitespace], Statement v a)]
   | Assign a (Expr v a) (Expr v a)
   deriving (Eq, Show)
 instance Plated (Statement v a) where
-  plate f (Fundef a b c sts) = Fundef a b c <$> traverse f sts
-  plate f (If a b sts) = If a b <$> traverse f sts
+  plate f (Fundef a b c sts) = Fundef a b c <$> (traverse._3) f sts
+  plate f (If a b sts) = If a b <$> (traverse._3) f sts
   plate _ p = pure p
 
 data Expr (v :: [*]) a

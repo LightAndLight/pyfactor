@@ -17,10 +17,10 @@ instance HasExprs Statement where
   _Exprs f (Fundef a name params sts) =
     Fundef a name <$>
     (traverse._Exprs) f params <*>
-    (traverse._Exprs) f sts
+    (traverse._3._Exprs) f sts
   _Exprs f (Return a e) = Return a <$> f e
   _Exprs f (Expr a e) = Expr a <$> f e
-  _Exprs f (If a e sts) = If a <$> f e <*> (traverse._Exprs) f sts
+  _Exprs f (If a e sts) = If a <$> f e <*> (traverse._3._Exprs) f sts
   _Exprs f (Assign a e1 e2) = Assign a <$> f e1 <*> f e2
 
 _KeywordParam
@@ -38,8 +38,8 @@ _Fundef
   :: Prism
        (Statement v a)
        (Statement '[] a)
-       (a, String, Params v a, [Statement v a])
-       (a, String, Params '[] a, [Statement '[] a])
+       (a, String, Params v a, [(a, [Whitespace], Statement v a)])
+       (a, String, Params '[] a, [(a, [Whitespace], Statement '[] a)])
 _Fundef =
   prism
     (\(a, b, c, d) -> Fundef a b c d)

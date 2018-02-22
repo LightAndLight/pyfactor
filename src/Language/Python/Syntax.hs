@@ -19,7 +19,7 @@ def_ name params block =
   Fundef ()
     name
     params
-    block
+    ((,,) () [Space, Space, Space, Space] <$> block)
 
 (.>) :: Expr '[] () -> String -> Expr '[] ()
 (.>) = Deref ()
@@ -56,7 +56,7 @@ is_ :: Expr '[] () -> Expr '[] () -> Expr '[] ()
 is_ = Comp () (Is ())
 
 if_ :: Expr '[] () -> [Statement '[] ()] -> Statement '[] ()
-if_ = If ()
+if_ e sts = If () e ((,,) () [Space, Space, Space, Space] <$> sts)
 
 var_ :: String -> Expr '[] ()
 var_ = Ident ()

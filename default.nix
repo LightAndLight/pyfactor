@@ -6,11 +6,14 @@ let
 
   f = import ./pyfactor.nix;
 
+
   haskellPackages = if compiler == "default"
                        then pkgs.haskellPackages
                        else pkgs.haskell.packages.${compiler};
 
-  drv = haskellPackages.callPackage f {};
+  type-level-sets = haskellPackages.callPackage ./nix/type-level-sets.nix {};
+
+  drv = haskellPackages.callPackage f { inherit type-level-sets; };
 
 in
 
