@@ -1,4 +1,5 @@
 {-# language DataKinds, LambdaCase, ViewPatterns #-}
+{-# language TemplateHaskell #-}
 module Language.Python.Internal.Optics where
 
 import Control.Lens
@@ -31,16 +32,26 @@ class HasStatements s where
 instance HasStatements Block where
   _Statements = _Wrapped.traverse._3
 
+data KeywordParam v a
+  = MkKeywordParam
+  { _kpAnn :: a
+  , _kpName :: String
+  , _kpExpr :: Expr v a
+  } deriving (Eq, Show)
+makeLenses ''KeywordParam
+
 _KeywordParam
   :: Prism
        (Param v a)
        (Param '[] a)
-       (a, String, Expr v a)
-       (a, String, Expr '[] a)
+       (KeywordParam v a)
+       (KeywordParam '[] a)
 _KeywordParam =
   prism
-    (\(a, b, c) -> KeywordParam a b c)
-    (\case; (coerce -> KeywordParam a b c) -> Right (a, b, c); (coerce -> a) -> Left a)
+    (\(MkKeywordParam a b c) -> KeywordParam a b c)
+    (\case
+        (coerce -> KeywordParam a b c) -> Right (MkKeywordParam a b c)
+        (coerce -> a) -> Left a)
 
 _Fundef
   :: Prism

@@ -1,7 +1,8 @@
 {-# language OverloadedStrings #-}
 module Example where
 
-import Control.Lens ((^?), (&), (.~), (^..), folded, _2, _3, view, filtered)
+import Control.Lens
+  ((^?), (&), (.~), (^.), (^..), folded, _2, _3, view, filtered)
 import Language.Python.Internal.Optics
 import Language.Python.Internal.Syntax
 import Language.Python.Syntax
@@ -51,13 +52,14 @@ append_to'' =
 
 fixMDA input = do
   (_, name, params, body) <- input ^? _Fundef
-  (_, paramname, paramvalue) <- params ^? folded._KeywordParam.filtered (isMutable.view _3)
+  targetParam <- params ^? folded._KeywordParam.filtered (isMutable._kpExpr)
   let
+    pname = targetParam ^. kpName
     newparams =
-        params & traverse._KeywordParam.filtered ((==paramname).view _2)._3 .~ none_
+      params & traverse._KeywordParam.filtered ((==pname)._kpName).kpExpr .~ none_
 
     fixed =
-        if_ (var_ paramname `is_` none_) [ var_ paramname .= list_ [] ]
+        if_ (var_ pname `is_` none_) [ var_ pname .= list_ [] ]
 
   pure $ def_ name newparams (fixed : (body ^.. _Statements))
 
