@@ -5,7 +5,7 @@
 module Language.Python.Validate.Syntax where
 
 import Control.Applicative
-import Control.Lens ((#), _Wrapped)
+import Control.Lens ((#))
 import Control.Lens.Tuple
 import Control.Lens.Traversal
 import Data.Coerce
@@ -49,7 +49,7 @@ validateStatementSyntax
 validateStatementSyntax (Fundef a name params body) =
   Fundef a name <$>
   validateParamsSyntax params <*>
-  traverseOf (_Wrapped.traverse._3) validateStatementSyntax body
+  traverseOf (blockStatements.traverse) validateStatementSyntax body
 validateStatementSyntax (Return a expr) =
   Return a <$>
   validateExprSyntax expr
@@ -59,7 +59,7 @@ validateStatementSyntax (Expr a expr) =
 validateStatementSyntax (If a expr body) =
   If a <$>
   validateExprSyntax expr <*>
-  traverseOf (_Wrapped.traverse._3) validateStatementSyntax body
+  traverseOf (blockStatements.traverse) validateStatementSyntax body
 validateStatementSyntax (Assign a lvalue rvalue) =
   Assign a <$>
   (if canAssignTo lvalue

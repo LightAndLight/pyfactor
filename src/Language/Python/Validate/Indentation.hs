@@ -17,25 +17,9 @@ validateBlockIndentation
   :: AsIndentationError e v a
   => Block v a
   -> Validate [e] (Block (Nub (Indentation ': v)) a)
-validateBlockIndentation a =
-  view (from _Wrapped) <$>
-  go Nothing (view _Wrapped a)
-  where
-    go _ [] = pure []
-    go a ((ann, ws, st):xs)
-      | null ws = Failure [_ExpectedIndent # ann] <*> (go a xs)
-      | otherwise =
-          case a of
-            Nothing ->
-              liftA2 (:)
-                ((,,) ann ws <$> validateStatementIndentation st)
-              (go (Just ws) xs)
-            Just ws'
-              | ws == ws' ->
-                  liftA2 (:)
-                    ((,,) ann ws <$> validateStatementIndentation st)
-                    (go a xs)
-              | otherwise -> Failure [_WrongIndent # (ws', ws, ann)] <*> (go a xs)
+validateBlockIndentation (Block ann ws sts)
+  | null ws = Failure [_ExpectedIndent # ann] <*> traverse validateStatementIndentation sts
+  | otherwise = Block ann ws <$> traverse validateStatementIndentation sts
 
 validateExprIndentation
   :: AsIndentationError e v a
