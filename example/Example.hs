@@ -39,7 +39,7 @@ append_to' =
   in
     d
       [ d [pass_]
-      , expr_ $ call_ ("to" .> "append") [ "element" ]
+      , expr_ $ call_ ("to" /> "append") [ "element" ]
       , return_ "to"
       ]
 

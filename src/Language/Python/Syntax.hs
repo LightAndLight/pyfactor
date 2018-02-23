@@ -21,11 +21,6 @@ def_ name params block =
     params
     (Block $ (,,) () [Space, Space, Space, Space] <$> block)
 
-(.>) :: Expr '[] () -> String -> Expr '[] ()
-(.>) = Deref ()
-
-infixl 5 .>
-
 data Arg = AP (Expr '[] ()) | AK String (Expr '[] ())
 instance HasPositional Arg (Expr '[] ()) where; p_ = AP
 instance IsString Arg where fromString = AP . fromString
@@ -51,6 +46,64 @@ list_ = List ()
 
 is_ :: Expr '[] () -> Expr '[] () -> Expr '[] ()
 is_ = BinOp () (Is ())
+infixl 1 `is_`
+
+(.|) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
+(.|) = undefined
+infixl 2 .|
+
+(.^) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
+(.^) = undefined
+infixl 3 .^
+
+(.&) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
+(.&) = undefined
+infixl 4 .&
+
+(.<<) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
+(.<<) = undefined
+infixl 5 .<<
+
+(.>>) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
+(.>>) = undefined
+infixl 5 .>>
+
+(.+) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
+(.+) = undefined
+infixl 6 .+
+
+(.-) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
+(.-) = undefined
+infixl 6 .-
+
+(.*) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
+(.*) = undefined
+infixl 7 .*
+
+(.@) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
+(.@) = undefined
+infixl 7 .@
+
+(./) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
+(./) = undefined
+infixl 7 ./
+
+(.//) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
+(.//) = undefined
+infixl 7 .//
+
+(.%) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
+(.%) = undefined
+infixl 7 .%
+
+(.**) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
+(.**) = undefined
+infixl 8 .**
+
+(/>) :: Expr '[] () -> String -> Expr '[] ()
+(/>) = Deref ()
+infixl 9 />
+
 
 if_ :: Expr '[] () -> [Statement '[] ()] -> Statement '[] ()
 if_ e sts = If () e (Block $ (,,) () [Space, Space, Space, Space] <$> sts)
