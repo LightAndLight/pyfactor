@@ -31,7 +31,15 @@ def append_to(element, to=[]):
 
 isMutable :: Expr v a -> Bool
 isMutable None{} = False
-isMutable _ = True
+isMutable List{} = True
+isMutable Deref{} = True
+isMutable Call{} = True
+isMutable BinOp{} = True
+isMutable Negate{} = True
+isMutable (Parens _ a) = isMutable a
+isMutable Ident{} = True
+isMutable Int{} = False
+isMutable Bool{} = False
 
 append_to' =
   let
