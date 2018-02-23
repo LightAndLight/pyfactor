@@ -46,9 +46,6 @@ return_ = Return ()
 expr_ :: Expr '[] () -> Statement '[] ()
 expr_ = Expr ()
 
-instance IsString (Expr '[] ()) where
-  fromString = Ident ()
-
 list_ :: [Expr '[] ()] -> Expr '[] ()
 list_ = List ()
 

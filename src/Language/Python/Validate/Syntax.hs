@@ -24,6 +24,7 @@ validateExprSyntax
      )
   => Expr v a
   -> Validate [e] (Expr (Nub (Syntax ': v)) a)
+validateExprSyntax (Int a n) = pure $ Int a n
 validateExprSyntax (Ident a name) = pure $ Ident a name
 validateExprSyntax (List a exprs) = List a <$> traverse validateExprSyntax exprs
 validateExprSyntax (Deref a expr name) =

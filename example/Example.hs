@@ -2,7 +2,7 @@
 module Example where
 
 import Control.Lens
-  ((^?), (&), (.~), (^.), (^..), folded, _2, _3, view, filtered)
+  ((^?), (&), (.~), (^.), (^..), folded, filtered)
 import Language.Python.Internal.Optics
 import Language.Python.Internal.Syntax
 import Language.Python.Syntax

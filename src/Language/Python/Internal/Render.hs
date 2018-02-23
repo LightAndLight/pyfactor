@@ -11,10 +11,15 @@ renderWhitespace Tab = "\t"
 renderWhitespace (Continued ws) = "\\\n" <> foldMap renderWhitespace ws
 
 renderExpr :: Expr v a -> String
+renderExpr (Int _ n) = show n
 renderExpr (Ident _ name) = name
 renderExpr (List _ exprs) = "[" <> intercalate ", " (fmap renderExpr exprs) <> "]"
 renderExpr (Call _ expr args) = renderExpr expr <> renderArgs args
-renderExpr (Deref _ expr name) = renderExpr expr <> "." <> name
+renderExpr (Deref _ expr name) =
+  (case expr of
+    Int{} -> "(" <> renderExpr expr <> ")"
+    _ -> renderExpr expr) <>
+  "." <> name
 renderExpr (None _) = "None"
 renderExpr (Comp _ op e1 e2) =
   renderExpr e1 <>

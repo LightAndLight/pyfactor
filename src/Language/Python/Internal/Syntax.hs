@@ -7,6 +7,7 @@ import Control.Lens.TH
 import Control.Lens.Tuple
 import Control.Lens.Plated
 import Control.Lens.Wrapped
+import Data.String
 
 type Params v a = [Param v a]
 data Param (v :: [*]) a
@@ -44,7 +45,18 @@ data Expr (v :: [*]) a
   | None a
   | Comp a (CompOp a) (Expr v a) (Expr v a)
   | Ident a String
+  | Int a Integer
   deriving (Eq, Show)
+instance IsString (Expr '[] ()) where
+  fromString = Ident ()
+instance Num (Expr '[] ()) where
+  fromInteger = Int ()
+  negate = undefined
+  (+) = undefined
+  (*) = undefined
+  (-) = undefined
+  signum = undefined
+  abs = undefined
 
 data CompOp a
   = Is a
