@@ -28,3 +28,11 @@ main = do
       case validateStatementSyntax a of
         Failure errs -> print (errs :: [SyntaxError '[Indentation] ()])
         Success a' -> putStrLn . unlines $ renderStatement a'
+
+  let x = append_to'' ()
+  case validateStatementIndentation x of
+    Failure errs -> print (errs :: [IndentationError '[] ()])
+    Success a ->
+      case validateStatementSyntax a of
+        Failure errs -> print (errs :: [SyntaxError '[Indentation] ()])
+        Success a' -> putStrLn . unlines $ renderStatement a'
