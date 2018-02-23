@@ -78,6 +78,7 @@ instance Plated (Expr '[] ()) where
 data BinOp a
   = Is a
   | Minus a
+  | Exp a
   deriving (Eq, Show, Functor)
 
 -- | 'Traversal' over all the expressions in a term
@@ -119,6 +120,7 @@ operatorTable :: [OpEntry]
 operatorTable =
   [ entry Is 10 L
   , entry Minus 20 L
+  , entry Exp 30 R
   ]
   where
     entry a = OpEntry (a ())

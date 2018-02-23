@@ -60,6 +60,8 @@ bracketing =
     , expr_ $ 1 .- (2 .- 3)
     , expr_ $ 1 .- 2 `is_` 3
     , expr_ $ 1 .- (2 `is_` 3)
+    , expr_ $ 1 .** 2 .** 3
+    , expr_ $ (1 .** 2) .** 3
     ]
 
 -- | Fix mutable default arguments

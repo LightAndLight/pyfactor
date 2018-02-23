@@ -97,8 +97,8 @@ infixl 7 .//
 infixl 7 .%
 
 (.**) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
-(.**) = undefined
-infixl 8 .**
+(.**) = BinOp () (Exp ())
+infixr 8 .**
 
 (/>) :: Expr '[] () -> String -> Expr '[] ()
 (/>) = Deref ()

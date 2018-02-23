@@ -99,3 +99,4 @@ renderParams a = "(" <> intercalate ", " (fmap go a) <> ")"
 renderBinOp :: BinOp a -> String
 renderBinOp (Is _) = "is"
 renderBinOp (Minus _) = "-"
+renderBinOp (Exp _) = "**"
