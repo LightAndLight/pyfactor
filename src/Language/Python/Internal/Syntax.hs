@@ -53,6 +53,7 @@ data Expr (v :: [*]) a
   | Call a (Expr v a) (Args v a)
   | None a
   | BinOp a (BinOp a) (Expr v a) (Expr v a)
+  | Negate a (Expr v a)
   | Ident a String
   | Int a Integer
   deriving (Eq, Show)
@@ -60,7 +61,7 @@ instance IsString (Expr '[] ()) where
   fromString = Ident ()
 instance Num (Expr '[] ()) where
   fromInteger = Int ()
-  negate = undefined
+  negate = Negate ()
   (+) = undefined
   (*) = undefined
   (-) = undefined
@@ -74,6 +75,7 @@ instance Plated (Expr '[] ()) where
   plate f (BinOp a op e1 e2) = BinOp a op <$> f e1 <*> f e2
   plate f (Ident a name) = pure $ Ident a name
   plate _ (Int a n) = pure $ Int a n
+  plate f (Negate a expr) = Negate a <$> f expr
 
 data BinOp a
   = Is a

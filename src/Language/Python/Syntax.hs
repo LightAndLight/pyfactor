@@ -104,6 +104,9 @@ infixr 8 .**
 (/>) = Deref ()
 infixl 9 />
 
+neg :: Expr '[] () -> Expr '[] ()
+neg = Negate ()
+
 if_ :: Expr '[] () -> [Statement '[] ()] -> Statement '[] ()
 if_ e sts = If () e (Block $ (,,) () [Space, Space, Space, Space] <$> sts)
 

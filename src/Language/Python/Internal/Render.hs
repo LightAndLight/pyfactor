@@ -16,6 +16,11 @@ renderWhitespace Tab = "\t"
 renderWhitespace (Continued ws) = "\\\n" <> foldMap renderWhitespace ws
 
 renderExpr :: Expr v a -> String
+renderExpr (Negate _ expr) =
+  "-" <> case expr of
+           BinOp _ Exp{} _ _ -> renderExpr expr
+           BinOp{} -> "(" <> renderExpr expr <> ")"
+           _ -> renderExpr expr
 renderExpr (Int _ n) = show n
 renderExpr (Ident _ name) = name
 renderExpr (List _ exprs) = "[" <> intercalate ", " (fmap renderExpr exprs) <> "]"
@@ -46,11 +51,14 @@ renderExpr (BinOp _ op e1 e2) =
         R | Just R <- lEntry ^? _Just.opAssoc -> (Just bracket, Nothing)
         _ -> (Nothing, Nothing)
 
-    e1f' = do
-      p <- lEntry ^? _Just.opPrec
-      if p < entry ^. opPrec
-      then Just bracket
-      else Nothing
+    e1f' =
+      case (e1, op) of
+        (Negate{}, Exp{}) -> Just bracket
+        _ -> do
+          p <- lEntry ^? _Just.opPrec
+          if p < entry ^. opPrec
+          then Just bracket
+          else Nothing
 
     e2f' = do
       p <- rEntry ^? _Just.opPrec
