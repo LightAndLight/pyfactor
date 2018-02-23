@@ -69,15 +69,15 @@ infixl 5 .<<
 infixl 5 .>>
 
 (.+) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
-(.+) = undefined
+(.+) = (+)
 infixl 6 .+
 
 (.-) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
-(.-) = BinOp () (Minus ())
+(.-) = (-)
 infixl 6 .-
 
 (.*) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
-(.*) = undefined
+(.*) = (*)
 infixl 7 .*
 
 (.@) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
@@ -85,7 +85,7 @@ infixl 7 .*
 infixl 7 .@
 
 (./) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
-(./) = undefined
+(./) = BinOp () (Divide ())
 infixl 7 ./
 
 (.//) :: Expr '[] () -> Expr '[] () -> Expr '[] ()

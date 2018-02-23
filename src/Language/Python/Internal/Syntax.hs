@@ -63,9 +63,9 @@ instance IsString (Expr '[] ()) where
 instance Num (Expr '[] ()) where
   fromInteger = Int ()
   negate = Negate ()
-  (+) = undefined
-  (*) = undefined
-  (-) = undefined
+  (+) = BinOp () (Plus ())
+  (*) = BinOp () (Multiply ())
+  (-) = BinOp () (Minus ())
   signum = undefined
   abs = undefined
 instance Plated (Expr '[] ()) where
@@ -85,6 +85,9 @@ data BinOp a
   | Exp a
   | BoolAnd a
   | BoolOr a
+  | Multiply a
+  | Divide a
+  | Plus a
   deriving (Eq, Show, Functor)
 
 -- | 'Traversal' over all the expressions in a term
@@ -128,6 +131,9 @@ operatorTable =
   , entry BoolAnd 5 L
   , entry Is 10 L
   , entry Minus 20 L
+  , entry Plus 20 L
+  , entry Multiply 25 L
+  , entry Divide 25 L
   , entry Exp 30 R
   ]
   where

@@ -107,7 +107,10 @@ renderParams a = "(" <> intercalate ", " (fmap go a) <> ")"
 
 renderBinOp :: BinOp a -> String
 renderBinOp (Is _) = "is"
+renderBinOp (Plus _) = "+"
 renderBinOp (Minus _) = "-"
+renderBinOp (Multiply _) = "*"
+renderBinOp (Divide _) = "/"
 renderBinOp (Exp _) = "**"
 renderBinOp (BoolAnd _) = "and"
 renderBinOp (BoolOr _) = "or"
