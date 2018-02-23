@@ -13,6 +13,23 @@ import Language.Python.Validate.Indentation.Error
 
 data Indentation
 
+equivalentIndentation :: [Whitespace] -> [Whitespace] -> Bool
+equivalentIndentation [] [] = True
+equivalentIndentation (x:xs) [] =
+  case x of
+    Continued _ -> True
+    _ -> False
+equivalentIndentation [] (y:ys) =
+  case y of
+    Continued _ -> True
+    _ -> False
+equivalentIndentation (x:xs) (y:ys) =
+  case (x, y) of
+    (Space, Space) -> equivalentIndentation xs ys
+    (Tab, Tab) -> equivalentIndentation xs ys
+    (Continued _, Continued _) -> True
+    _ -> False
+
 validateBlockIndentation
   :: AsIndentationError e v a
   => Block v a
@@ -23,19 +40,19 @@ validateBlockIndentation a =
   where
     go _ [] = pure []
     go a ((ann, ws, st):xs)
-      | null ws = Failure [_ExpectedIndent # ann] <*> (go a xs)
+      | null ws = Failure [_ExpectedIndent # ann] <*> go a xs
       | otherwise =
           case a of
             Nothing ->
               liftA2 (:)
                 ((,,) ann ws <$> validateStatementIndentation st)
-              (go (Just ws) xs)
+                (go (Just ws) xs)
             Just ws'
-              | ws == ws' ->
+              | equivalentIndentation ws ws' ->
                   liftA2 (:)
                     ((,,) ann ws <$> validateStatementIndentation st)
                     (go a xs)
-              | otherwise -> Failure [_WrongIndent # (ws', ws, ann)] <*> (go a xs)
+              | otherwise -> Failure [_WrongIndent # (ws', ws, ann)] <*> go a xs
 
 validateExprIndentation
   :: AsIndentationError e v a

@@ -23,7 +23,6 @@ append_to a =
      , (a, replicate 4 Space, Return a (Ident a "to"))
      ])
 
-
 {-
 def append_to(element, to=[]):
     to.append(element)
@@ -44,11 +43,17 @@ append_to' =
       , return_ "to"
       ]
 
-append_to'' =
-  def_ "append_to" [ p_ "element", k_ "to" (list_ []), k_ "to2" (list_ []) ]
-    [ expr_ $ call_ ("to" .> "append") [ "element" ]
-    , return_ "to"
+append_to'' a =
+  Fundef a
+    "append_to"
+    [ PositionalParam a "element"
+    , KeywordParam a "to" (List a [])
     ]
+    (Block
+     [ (a, replicate 4 Space, Expr a $ Call a (Deref a (Ident a "to") "append") (PositionalArg a (Ident a "element") $ NoArgs a))
+     , (a, replicate 4 Space ++ [Continued [Space, Space]], Return a (Ident a "to"))
+     ])
+
 
 -- | Fix mutable default arguments
 fixMDA input = do
