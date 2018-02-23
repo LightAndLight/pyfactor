@@ -16,6 +16,7 @@ renderWhitespace Tab = "\t"
 renderWhitespace (Continued ws) = "\\\n" <> foldMap renderWhitespace ws
 
 renderExpr :: Expr v a -> String
+renderExpr (Bool _ b) = show b
 renderExpr (Negate _ expr) =
   "-" <> case expr of
            BinOp _ Exp{} _ _ -> renderExpr expr

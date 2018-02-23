@@ -65,6 +65,8 @@ bracketing =
     , expr_ $ -1 .** 2
     , expr_ $ (-1) .** 2
     , expr_ $ -1 .- (-1)
+    , expr_ true_
+    , expr_ false_
     ]
 
 -- | Fix mutable default arguments

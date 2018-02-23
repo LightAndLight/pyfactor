@@ -24,6 +24,7 @@ validateExprSyntax
      )
   => Expr v a
   -> Validate [e] (Expr (Nub (Syntax ': v)) a)
+validateExprSyntax (Bool a b) = pure $ Bool a b
 validateExprSyntax (Negate a expr) = Negate a <$> validateExprSyntax expr
 validateExprSyntax (Int a n) = pure $ Int a n
 validateExprSyntax (Ident a name) = pure $ Ident a name

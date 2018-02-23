@@ -119,5 +119,11 @@ none_ = None ()
 pass_ :: Statement '[] ()
 pass_ = Pass ()
 
+true_ :: Expr '[] ()
+true_ = Bool () True
+
+false_ :: Expr '[] ()
+false_ = Bool () False
+
 (.=) :: Expr '[] () -> Expr '[] () -> Statement '[] ()
 (.=) = Assign ()

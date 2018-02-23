@@ -56,6 +56,7 @@ data Expr (v :: [*]) a
   | Negate a (Expr v a)
   | Ident a String
   | Int a Integer
+  | Bool a Bool
   deriving (Eq, Show)
 instance IsString (Expr '[] ()) where
   fromString = Ident ()
@@ -68,12 +69,13 @@ instance Num (Expr '[] ()) where
   signum = undefined
   abs = undefined
 instance Plated (Expr '[] ()) where
+  plate _ (Bool a b) = pure $ Bool a b
   plate f (List a exprs) = List a <$> traverse f exprs
   plate f (Deref a expr name) = Deref a <$> f expr <*> pure name
   plate f (Call a expr args) = Call a <$> f expr <*> _Exprs f args
   plate _ (None a) = pure $ None a
   plate f (BinOp a op e1 e2) = BinOp a op <$> f e1 <*> f e2
-  plate f (Ident a name) = pure $ Ident a name
+  plate _ (Ident a name) = pure $ Ident a name
   plate _ (Int a n) = pure $ Int a n
   plate f (Negate a expr) = Negate a <$> f expr
 
