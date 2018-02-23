@@ -125,5 +125,11 @@ true_ = Bool () True
 false_ :: Expr '[] ()
 false_ = Bool () False
 
+and_ :: Expr '[] () -> Expr '[] () -> Expr '[] ()
+and_ = BinOp () (BoolAnd ())
+
+or_ :: Expr '[] () -> Expr '[] () -> Expr '[] ()
+or_ = BinOp () (BoolOr ())
+
 (.=) :: Expr '[] () -> Expr '[] () -> Statement '[] ()
 (.=) = Assign ()

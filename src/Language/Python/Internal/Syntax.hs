@@ -83,6 +83,8 @@ data BinOp a
   = Is a
   | Minus a
   | Exp a
+  | BoolAnd a
+  | BoolOr a
   deriving (Eq, Show, Functor)
 
 -- | 'Traversal' over all the expressions in a term
@@ -122,7 +124,9 @@ makeLenses ''OpEntry
 
 operatorTable :: [OpEntry]
 operatorTable =
-  [ entry Is 10 L
+  [ entry BoolOr 4 L
+  , entry BoolAnd 5 L
+  , entry Is 10 L
   , entry Minus 20 L
   , entry Exp 30 R
   ]

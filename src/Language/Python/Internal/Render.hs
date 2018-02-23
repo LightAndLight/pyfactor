@@ -109,3 +109,5 @@ renderBinOp :: BinOp a -> String
 renderBinOp (Is _) = "is"
 renderBinOp (Minus _) = "-"
 renderBinOp (Exp _) = "**"
+renderBinOp (BoolAnd _) = "and"
+renderBinOp (BoolOr _) = "or"
