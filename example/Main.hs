@@ -2,11 +2,9 @@
 module Main where
 
 import Control.Lens
-import Data.Foldable
 
 import Example
 import Data.Validate
-import Language.Python.Syntax
 import Language.Python.Validate.Syntax
 import Language.Python.Validate.Syntax.Error
 import Language.Python.Validate.Indentation
