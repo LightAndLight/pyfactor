@@ -1,5 +1,6 @@
 {-# language DataKinds #-}
 {-# language MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances #-}
+{-# language OverloadedLists #-}
 module Language.Python.Syntax where
 
 import Data.String

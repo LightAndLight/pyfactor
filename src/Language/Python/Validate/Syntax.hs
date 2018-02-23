@@ -6,22 +6,18 @@ module Language.Python.Validate.Syntax where
 
 import Control.Applicative
 import Control.Lens ((#))
-import Control.Lens.Tuple
 import Control.Lens.Traversal
 import Data.Coerce
 import Data.Semigroup
 import Data.Type.Set
 import Data.Validate
 import Language.Python.Internal.Syntax
-import Language.Python.Validate.Indentation
 import Language.Python.Validate.Syntax.Error
 
 data Syntax
 
 validateExprSyntax
-  :: ( AsSyntaxError e v a
-     , Member Indentation v
-     )
+  :: AsSyntaxError e v a
   => Expr v a
   -> Validate [e] (Expr (Nub (Syntax ': v)) a)
 validateExprSyntax (Ident a name) = pure $ Ident a name
@@ -41,9 +37,7 @@ validateExprSyntax (Comp a op e1 e2) =
   validateExprSyntax e2
 
 validateStatementSyntax
-  :: ( AsSyntaxError e v a
-     , Member Indentation v
-     )
+  :: AsSyntaxError e v a
   => Statement v a
   -> Validate [e] (Statement (Nub (Syntax ': v)) a)
 validateStatementSyntax (Fundef a name params body) =
@@ -73,9 +67,7 @@ canAssignTo None{} = False
 canAssignTo _ = True
 
 validateArgsSyntax
-  :: ( AsSyntaxError e v a
-     , Member Indentation v
-     )
+  :: AsSyntaxError e v a
   => Args v a -> Validate [e] (Args (Nub (Syntax ': v)) a)
 validateArgsSyntax (NoArgs a) = pure $ NoArgs a
 validateArgsSyntax (PositionalArg a expr args) =
@@ -84,10 +76,9 @@ validateArgsSyntax (PositionalArg a expr args) =
   validateArgsSyntax args
 
 validateParamsSyntax
-  :: ( AsSyntaxError e v a
-     , Member Indentation v
-     )
-  => Params v a -> Validate [e] (Params (Nub (Syntax ': v)) a)
+  :: AsSyntaxError e v a
+  => Params v a
+  -> Validate [e] (Params (Nub (Syntax ': v)) a)
 validateParamsSyntax = go [] False
   where
     go _ _ [] = pure []
