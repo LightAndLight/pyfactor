@@ -50,7 +50,7 @@ list_ :: [Expr '[] ()] -> Expr '[] ()
 list_ = List ()
 
 is_ :: Expr '[] () -> Expr '[] () -> Expr '[] ()
-is_ = Comp () (Is ())
+is_ = BinOp () (Is ())
 
 if_ :: Expr '[] () -> [Statement '[] ()] -> Statement '[] ()
 if_ e sts = If () e (Block $ (,,) () [Space, Space, Space, Space] <$> sts)

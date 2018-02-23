@@ -21,10 +21,10 @@ renderExpr (Deref _ expr name) =
     _ -> renderExpr expr) <>
   "." <> name
 renderExpr (None _) = "None"
-renderExpr (Comp _ op e1 e2) =
+renderExpr (BinOp _ op e1 e2) =
   renderExpr e1 <>
   " " <>
-  renderCompOp op <>
+  renderBinOp op <>
   " " <>
   renderExpr e2
 
@@ -58,5 +58,5 @@ renderParams a = "(" <> intercalate ", " (fmap go a) <> ")"
     go (PositionalParam _ name) = name
     go (KeywordParam _ name expr) = name <> "=" <> renderExpr expr
 
-renderCompOp :: CompOp a -> String
-renderCompOp (Is _) = "is"
+renderBinOp :: BinOp a -> String
+renderBinOp (Is _) = "is"

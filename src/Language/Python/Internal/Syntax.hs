@@ -43,7 +43,7 @@ data Expr (v :: [*]) a
   | Deref a (Expr v a) String
   | Call a (Expr v a) (Args v a)
   | None a
-  | Comp a (CompOp a) (Expr v a) (Expr v a)
+  | BinOp a (BinOp a) (Expr v a) (Expr v a)
   | Ident a String
   | Int a Integer
   deriving (Eq, Show)
@@ -58,7 +58,7 @@ instance Num (Expr '[] ()) where
   signum = undefined
   abs = undefined
 
-data CompOp a
+data BinOp a
   = Is a
   deriving (Eq, Show)
 

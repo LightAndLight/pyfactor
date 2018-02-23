@@ -36,8 +36,8 @@ validateExprSyntax (Call a expr args) =
   validateExprSyntax expr <*>
   validateArgsSyntax args
 validateExprSyntax (None a) = pure $ None a
-validateExprSyntax (Comp a op e1 e2) =
-  Comp a op <$>
+validateExprSyntax (BinOp a op e1 e2) =
+  BinOp a op <$>
   validateExprSyntax e1 <*>
   validateExprSyntax e2
 
