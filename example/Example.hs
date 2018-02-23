@@ -1,13 +1,11 @@
-{-# language OverloadedStrings, OverloadedLists #-}
+{-# language OverloadedStrings #-}
 module Example where
 
 import Control.Lens
   ((^?), (&), (.~), (^.), (^..), folded, filtered)
-
 import Language.Python.Internal.Optics
 import Language.Python.Internal.Syntax
 import Language.Python.Syntax
-
 
 {-
 def append_to(element, to=[]):
@@ -22,7 +20,7 @@ append_to a =
     ]
     (Block
      a
-     [Space, Space, Space, Space]
+     (replicate 4 Space)
      [ Expr a $ Call a (Deref a (Ident a "to") "append") (PositionalArg a (Ident a "element") $ NoArgs a)
      , Return a (Ident a "to")
      ])

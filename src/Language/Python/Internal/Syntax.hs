@@ -6,7 +6,6 @@ module Language.Python.Internal.Syntax where
 import Control.Lens.TH
 import Control.Lens.Plated
 import Control.Lens.Wrapped
-import Data.List.NonEmpty
 
 data Expr (v :: [*]) a
   = List a [Expr v a]
@@ -46,7 +45,7 @@ data Statement (v :: [*]) a
 data Block v a
   = Block
   { _blockAnn :: a
-  , _blockWhitespace :: NonEmpty Whitespace
+  , _blockWhitespace :: [Whitespace]
   , _blockStatements :: [Statement v a]
   }
   deriving (Eq, Show)
