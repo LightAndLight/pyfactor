@@ -52,7 +52,7 @@ data Expr (v :: [*]) a
   | Deref a (Expr v a) String
   | Call a (Expr v a) (Args v a)
   | None a
-  | BinOp a (BinOp a) (Expr v a) (Expr v a)
+  | BinOp a (BinOp a) [Whitespace] [Whitespace] (Expr v a) (Expr v a)
   | Negate a (Expr v a)
   | Parens a (Expr v a)
   | Ident a String
@@ -64,9 +64,9 @@ instance IsString (Expr '[] ()) where
 instance Num (Expr '[] ()) where
   fromInteger = Int ()
   negate = Negate ()
-  (+) = BinOp () (Plus ())
-  (*) = BinOp () (Multiply ())
-  (-) = BinOp () (Minus ())
+  (+) = BinOp () (Plus ()) [Space] [Space]
+  (*) = BinOp () (Multiply ()) [Space] [Space]
+  (-) = BinOp () (Minus ()) [Space] [Space]
   signum = undefined
   abs = undefined
 instance Plated (Expr '[] ()) where
@@ -76,7 +76,7 @@ instance Plated (Expr '[] ()) where
   plate f (Deref a expr name) = Deref a <$> f expr <*> pure name
   plate f (Call a expr args) = Call a <$> f expr <*> _Exprs f args
   plate _ (None a) = pure $ None a
-  plate f (BinOp a op e1 e2) = BinOp a op <$> f e1 <*> f e2
+  plate f (BinOp a op ws1 ws2 e1 e2) = BinOp a op ws1 ws2 <$> f e1 <*> f e2
   plate _ (Ident a name) = pure $ Ident a name
   plate _ (Int a n) = pure $ Int a n
   plate f (Negate a expr) = Negate a <$> f expr
