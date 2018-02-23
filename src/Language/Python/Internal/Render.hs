@@ -1,6 +1,6 @@
 module Language.Python.Internal.Render where
 
-import Control.Lens ((^.))
+import Control.Lens (view, _Wrapped)
 import Data.List
 import Data.Monoid
 import Language.Python.Internal.Syntax
@@ -26,14 +26,12 @@ renderExpr (Comp _ op e1 e2) =
 renderStatement :: Statement v a -> [String]
 renderStatement (Fundef _ name params body) =
   ("def " <> name <> renderParams params <> ":") :
-  (body ^. blockStatements >>=
-   fmap (foldMap renderWhitespace (body ^. blockWhitespace) <>) . renderStatement)
+  (view _Wrapped body >>= \(_, a, b) -> (foldMap renderWhitespace a <>) <$> renderStatement b)
 renderStatement (Return _ expr) = ["return " <> renderExpr expr]
 renderStatement (Expr _ expr) = [renderExpr expr]
 renderStatement (If _ expr body) =
   ("if " <> renderExpr expr <> ":") :
-  (body ^. blockStatements >>=
-   fmap (foldMap renderWhitespace (body ^. blockWhitespace) <>) . renderStatement)
+  (view _Wrapped body >>= \(_, a, b) -> (foldMap renderWhitespace a <>) <$> renderStatement b)
 renderStatement (Assign _ lvalue rvalue) = [renderExpr lvalue <> " = " <> renderExpr rvalue]
 renderStatement (Pass _) = ["pass"]
 

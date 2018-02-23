@@ -2,7 +2,7 @@
 module Example where
 
 import Control.Lens
-  ((^?), (&), (.~), (^.), (^..), folded, filtered)
+  ((^?), (&), (.~), (^.), (^..), folded, _2, _3, view, filtered)
 import Language.Python.Internal.Optics
 import Language.Python.Internal.Syntax
 import Language.Python.Syntax
@@ -19,10 +19,8 @@ append_to a =
     , KeywordParam a "to" (List a [])
     ]
     (Block
-     a
-     (replicate 4 Space)
-     [ Expr a $ Call a (Deref a (Ident a "to") "append") (PositionalArg a (Ident a "element") $ NoArgs a)
-     , Return a (Ident a "to")
+     [ (a, replicate 4 Space, Expr a $ Call a (Deref a (Ident a "to") "append") (PositionalArg a (Ident a "element") $ NoArgs a))
+     , (a, replicate 4 Space, Return a (Ident a "to"))
      ])
 
 

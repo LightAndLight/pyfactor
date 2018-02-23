@@ -18,10 +18,10 @@ instance HasExprs Statement where
   _Exprs f (Fundef a name params sts) =
     Fundef a name <$>
     (traverse._Exprs) f params <*>
-    (blockStatements.traverse._Exprs) f sts
+    (_Wrapped.traverse._3._Exprs) f sts
   _Exprs f (Return a e) = Return a <$> f e
   _Exprs f (Expr a e) = Expr a <$> f e
-  _Exprs f (If a e sts) = If a <$> f e <*> (blockStatements.traverse._Exprs) f sts
+  _Exprs f (If a e sts) = If a <$> f e <*> (_Wrapped.traverse._3._Exprs) f sts
   _Exprs f (Assign a e1 e2) = Assign a <$> f e1 <*> f e2
   _Exprs _ p@Pass{} = pure $ coerce p
 
@@ -30,7 +30,7 @@ class HasStatements s where
   _Statements :: Traversal (s v a) (s '[] a) (Statement v a) (Statement '[] a)
 
 instance HasStatements Block where
-  _Statements = blockStatements.traverse
+  _Statements = _Wrapped.traverse._3
 
 data KeywordParam v a
   = MkKeywordParam
