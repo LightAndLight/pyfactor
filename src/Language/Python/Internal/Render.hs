@@ -1,7 +1,12 @@
 module Language.Python.Internal.Render where
 
-import Control.Lens (view, _Wrapped)
+import Control.Applicative
+import Control.Lens.Fold
+import Control.Lens.Getter
+import Control.Lens.Prism
+import Control.Lens.Wrapped
 import Data.List
+import Data.Maybe
 import Data.Monoid
 import Language.Python.Internal.Syntax
 
@@ -22,11 +27,44 @@ renderExpr (Deref _ expr name) =
   "." <> name
 renderExpr (None _) = "None"
 renderExpr (BinOp _ op e1 e2) =
-  renderExpr e1 <>
-  " " <>
-  renderBinOp op <>
-  " " <>
-  renderExpr e2
+  let
+    entry = lookupOpEntry op operatorTable
+
+    lEntry =
+      case e1 of
+        BinOp _ lOp _ _ -> Just $ lookupOpEntry lOp operatorTable
+        _ -> Nothing
+
+    rEntry =
+      case e2 of
+        BinOp _ rOp _ _ -> Just $ lookupOpEntry rOp operatorTable
+        _ -> Nothing
+
+    (e1f, e2f) =
+      case entry ^. opAssoc of
+        L | Just L <- rEntry ^? _Just.opAssoc -> (Nothing, Just bracket)
+        R | Just R <- lEntry ^? _Just.opAssoc -> (Just bracket, Nothing)
+        _ -> (Nothing, Nothing)
+
+    e1f' = do
+      p <- lEntry ^? _Just.opPrec
+      if p < entry ^. opPrec
+      then Just bracket
+      else Nothing
+
+    e2f' = do
+      p <- rEntry ^? _Just.opPrec
+      if p < entry ^. opPrec
+      then Just bracket
+      else Nothing
+  in
+    fromMaybe id (e1f <|> e1f') (renderExpr e1) <>
+    " " <>
+    renderBinOp op <>
+    " " <>
+    fromMaybe id (e2f <|> e2f') (renderExpr e2)
+  where
+    bracket a = "(" <> a <> ")"
 
 renderStatement :: Statement v a -> [String]
 renderStatement (Fundef _ name params body) =
@@ -60,3 +98,4 @@ renderParams a = "(" <> intercalate ", " (fmap go a) <> ")"
 
 renderBinOp :: BinOp a -> String
 renderBinOp (Is _) = "is"
+renderBinOp (Minus _) = "-"

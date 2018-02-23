@@ -6,6 +6,7 @@ import Data.Foldable
 
 import Example
 import Data.Validate
+import Language.Python.Syntax
 import Language.Python.Validate.Syntax
 import Language.Python.Validate.Syntax.Error
 import Language.Python.Validate.Indentation
@@ -30,6 +31,14 @@ main = do
         Success a' -> putStrLn . unlines $ renderStatement a'
 
   let x = append_to'' ()
+  case validateStatementIndentation x of
+    Failure errs -> print (errs :: [IndentationError '[] ()])
+    Success a ->
+      case validateStatementSyntax a of
+        Failure errs -> print (errs :: [SyntaxError '[Indentation] ()])
+        Success a' -> putStrLn . unlines $ renderStatement a'
+
+  let x = bracketing
   case validateStatementIndentation x of
     Failure errs -> print (errs :: [IndentationError '[] ()])
     Success a ->

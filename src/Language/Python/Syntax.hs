@@ -73,7 +73,7 @@ infixl 5 .>>
 infixl 6 .+
 
 (.-) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
-(.-) = undefined
+(.-) = BinOp () (Minus ())
 infixl 6 .-
 
 (.*) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
@@ -103,7 +103,6 @@ infixl 8 .**
 (/>) :: Expr '[] () -> String -> Expr '[] ()
 (/>) = Deref ()
 infixl 9 />
-
 
 if_ :: Expr '[] () -> [Statement '[] ()] -> Statement '[] ()
 if_ e sts = If () e (Block $ (,,) () [Space, Space, Space, Space] <$> sts)

@@ -54,6 +54,13 @@ append_to'' a =
      , (a, replicate 4 Space ++ [Continued [Space, Space]], Return a (Ident a "to"))
      ])
 
+bracketing =
+  def_ "bracketing" []
+    [ expr_ $ 1 .- 2 .- 3
+    , expr_ $ 1 .- (2 .- 3)
+    , expr_ $ 1 .- 2 `is_` 3
+    , expr_ $ 1 .- (2 `is_` 3)
+    ]
 
 -- | Fix mutable default arguments
 fixMDA input = do
