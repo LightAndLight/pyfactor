@@ -10,6 +10,7 @@ data SyntaxError (v :: [*]) a
   = PositionalAfterKeyword a String
   | CannotAssignTo a (Expr v a)
   | DuplicateArgument a String
+  | MissingSpacesInExpr (Expr v a)
   deriving (Eq, Show)
 
 makeClassyPrisms ''SyntaxError

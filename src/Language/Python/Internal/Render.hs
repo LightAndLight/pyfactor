@@ -20,7 +20,7 @@ renderExpr (Parens _ e) = "(" <> renderExpr e <> ")"
 renderExpr (Bool _ b) = show b
 renderExpr (Negate _ expr) =
   "-" <> case expr of
-           BinOp _ Exp{} _ _ -> renderExpr expr
+           BinOp _ Exp{} _ _ _ _ -> renderExpr expr
            BinOp{} -> "(" <> renderExpr expr <> ")"
            _ -> renderExpr expr
 renderExpr (Int _ n) = show n
@@ -33,18 +33,18 @@ renderExpr (Deref _ expr name) =
     _ -> renderExpr expr) <>
   "." <> name
 renderExpr (None _) = "None"
-renderExpr (BinOp _ op e1 e2) =
+renderExpr (BinOp _ op ws1 ws2 e1 e2) =
   let
     entry = lookupOpEntry op operatorTable
 
     lEntry =
       case e1 of
-        BinOp _ lOp _ _ -> Just $ lookupOpEntry lOp operatorTable
+        BinOp _ lOp _ _ _ _ -> Just $ lookupOpEntry lOp operatorTable
         _ -> Nothing
 
     rEntry =
       case e2 of
-        BinOp _ rOp _ _ -> Just $ lookupOpEntry rOp operatorTable
+        BinOp _ rOp _ _ _ _ -> Just $ lookupOpEntry rOp operatorTable
         _ -> Nothing
 
     (e1f, e2f) =
@@ -69,9 +69,9 @@ renderExpr (BinOp _ op e1 e2) =
       else Nothing
   in
     fromMaybe id (e1f <|> e1f') (renderExpr e1) <>
-    " " <>
+    foldMap renderWhitespace ws1  <>
     renderBinOp op <>
-    " " <>
+    foldMap renderWhitespace ws2 <>
     fromMaybe id (e2f <|> e2f') (renderExpr e2)
   where
     bracket a = "(" <> a <> ")"

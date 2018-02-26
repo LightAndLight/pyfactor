@@ -45,7 +45,7 @@ list_ :: [Expr '[] ()] -> Expr '[] ()
 list_ = List ()
 
 is_ :: Expr '[] () -> Expr '[] () -> Expr '[] ()
-is_ = BinOp () (Is ())
+is_ = BinOp () (Is ()) [Space] [Space]
 infixl 1 `is_`
 
 (.|) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
@@ -85,7 +85,7 @@ infixl 7 .*
 infixl 7 .@
 
 (./) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
-(./) = BinOp () (Divide ())
+(./) = BinOp () (Divide ()) [Space] [Space]
 infixl 7 ./
 
 (.//) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
@@ -97,7 +97,7 @@ infixl 7 .//
 infixl 7 .%
 
 (.**) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
-(.**) = BinOp () (Exp ())
+(.**) = BinOp () (Exp ()) [Space] [Space]
 infixr 8 .**
 
 (/>) :: Expr '[] () -> String -> Expr '[] ()
@@ -126,10 +126,10 @@ false_ :: Expr '[] ()
 false_ = Bool () False
 
 and_ :: Expr '[] () -> Expr '[] () -> Expr '[] ()
-and_ = BinOp () (BoolAnd ())
+and_ = BinOp () (BoolAnd ()) [Space] [Space]
 
 or_ :: Expr '[] () -> Expr '[] () -> Expr '[] ()
-or_ = BinOp () (BoolOr ())
+or_ = BinOp () (BoolOr ()) [Space] [Space]
 
 (.=) :: Expr '[] () -> Expr '[] () -> Statement '[] ()
 (.=) = Assign ()

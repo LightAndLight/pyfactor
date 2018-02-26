@@ -8,6 +8,7 @@ import Control.Applicative
 import Control.Lens ((#), _Wrapped)
 import Control.Lens.Tuple
 import Control.Lens.Traversal
+import Data.Char
 import Data.Coerce
 import Data.Semigroup
 import Data.Type.Set
@@ -17,6 +18,56 @@ import Language.Python.Validate.Indentation
 import Language.Python.Validate.Syntax.Error
 
 data Syntax
+
+isIdentifierChar :: Char -> Bool
+isIdentifierChar = liftA2 (||) isLetter (=='_')
+
+binOpStartsWith :: BinOp a -> Char
+binOpStartsWith (Is a) = 'i'
+binOpStartsWith (Minus a) = '-'
+binOpStartsWith (Exp a) = '*'
+binOpStartsWith (BoolAnd a) = 'a'
+binOpStartsWith (BoolOr a) = 'o'
+binOpStartsWith (Multiply a) = '*'
+binOpStartsWith (Divide a) = '/'
+binOpStartsWith (Plus a) = '+'
+
+binOpEndsWith :: BinOp a -> Char
+binOpEndsWith (Is a) = 's'
+binOpEndsWith (Minus a) = '-'
+binOpEndsWith (Exp a) = '*'
+binOpEndsWith (BoolAnd a) = 'd'
+binOpEndsWith (BoolOr a) = 'r'
+binOpEndsWith (Multiply a) = '*'
+binOpEndsWith (Divide a) = '/'
+binOpEndsWith (Plus a) = '+'
+
+exprStartsWith :: Expr v a -> Char
+exprStartsWith (List _ _) = '['
+exprStartsWith (Deref _ e _) = exprStartsWith e
+exprStartsWith (Call _ e _) = exprStartsWith e
+exprStartsWith None{} = 'N'
+exprStartsWith (BinOp _ _ _ _ e _) = exprStartsWith e
+exprStartsWith (Negate _ _) = '-'
+exprStartsWith Parens{} = '('
+exprStartsWith (Ident _ s) = head s
+exprStartsWith (Int _ i) = head $ show i
+exprStartsWith (Bool _ b) = head $ show b
+
+exprEndsWith :: Expr v a -> Char
+exprEndsWith (List _ _) = ']'
+exprEndsWith (Deref a _ s) =
+  case s of
+    [] -> '.'
+    _ -> last s
+exprEndsWith Call{} = ')'
+exprEndsWith None{} = 'e'
+exprEndsWith (BinOp _ _ _ _ _ e) = exprEndsWith e
+exprEndsWith (Negate _ e) = exprEndsWith e
+exprEndsWith Parens{} = ')'
+exprEndsWith (Ident _ s) = last s
+exprEndsWith (Int _ i) = last $ show i
+exprEndsWith (Bool _ b) = last $ show b
 
 validateExprSyntax
   :: ( AsSyntaxError e v a
@@ -39,8 +90,19 @@ validateExprSyntax (Call a expr args) =
   validateExprSyntax expr <*>
   validateArgsSyntax args
 validateExprSyntax (None a) = pure $ None a
-validateExprSyntax (BinOp a op e1 e2) =
-  BinOp a op <$>
+validateExprSyntax e@(BinOp a op ws1 ws2 e1 e2) =
+  uncurry (BinOp a op) <$>
+  (if
+     (null ws1 &&
+      isIdentifierChar (exprEndsWith e1) &&
+      isIdentifierChar (binOpStartsWith op)) ||
+     (null ws2 &&
+      isIdentifierChar (binOpEndsWith op) &&
+      isIdentifierChar (exprStartsWith e2))
+   then
+     Failure [_MissingSpacesInExpr # e]
+   else
+     Success (ws1, ws2)) <*>
   validateExprSyntax e1 <*>
   validateExprSyntax e2
 
