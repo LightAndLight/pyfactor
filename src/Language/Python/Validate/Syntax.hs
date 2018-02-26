@@ -6,7 +6,8 @@
 module Language.Python.Validate.Syntax where
 
 import Control.Applicative
-import Control.Lens ((#), _Wrapped)
+import Control.Lens ((#), _Wrapped, _head, _last)
+import Control.Lens.Fold
 import Control.Lens.Tuple
 import Control.Lens.Traversal
 import Data.Char
@@ -23,10 +24,21 @@ import Language.Python.Validate.Syntax.Error
 data Syntax
 
 class GStartsWith f where
-  gstartsWith :: f a -> Char
+  gstartsWith :: f a -> Maybe Char
+
+class StartsWith s where
+  startsWith :: s -> Maybe Char
+  default startsWith :: (Generic s, GStartsWith (Rep s))  => s -> Maybe Char
+  startsWith = gstartsWith . from
 
 instance GStartsWith f => GStartsWith (f :*: g) where
   gstartsWith (f :*: _) = gstartsWith f
+
+instance GStartsWith U1 where
+  gstartsWith _ = Nothing
+
+instance GStartsWith V1 where
+  gstartsWith _ = Nothing
 
 instance (GStartsWith f, GStartsWith g) => GStartsWith (f :+: g) where
   gstartsWith (L1 f) = gstartsWith f
@@ -35,17 +47,12 @@ instance (GStartsWith f, GStartsWith g) => GStartsWith (f :+: g) where
 instance GStartsWith f => GStartsWith (M1 i c f) where
   gstartsWith (M1 f) = gstartsWith f
 
-class StartsWith s where
-  startsWith :: s -> Char
-  default startsWith :: (Generic s, GStartsWith (Rep s))  => s -> Char
-  startsWith = gstartsWith . from
-
 class GEndsWith f where
-  gendsWith :: f a -> Char
+  gendsWith :: f a -> Maybe Char
 
 class EndsWith s where
-  endsWith :: s -> Char
-  default endsWith :: (Generic s, GEndsWith (Rep s)) => s -> Char
+  endsWith :: s -> Maybe Char
+  default endsWith :: (Generic s, GEndsWith (Rep s)) => s -> Maybe Char
   endsWith = gendsWith . from
 
 instance GEndsWith g => GEndsWith (f :*: g) where
@@ -58,55 +65,78 @@ instance (GEndsWith f, GEndsWith g) => GEndsWith (f :+: g) where
 instance GEndsWith f => GEndsWith (M1 i c f) where
   gendsWith (M1 f) = gendsWith f
 
+instance GEndsWith U1 where
+  gendsWith _ = Nothing
+
+instance GEndsWith V1 where
+  gendsWith _ = Nothing
+
 isIdentifierChar :: Char -> Bool
 isIdentifierChar = liftA2 (||) isLetter (=='_')
 
-binOpStartsWith :: BinOp a -> Char
-binOpStartsWith (Is a) = 'i'
-binOpStartsWith (Minus a) = '-'
-binOpStartsWith (Exp a) = '*'
-binOpStartsWith (BoolAnd a) = 'a'
-binOpStartsWith (BoolOr a) = 'o'
-binOpStartsWith (Multiply a) = '*'
-binOpStartsWith (Divide a) = '/'
-binOpStartsWith (Plus a) = '+'
+instance StartsWith (BinOp a) where
+  startsWith Is{} = Just 'i'
+  startsWith Minus{} = Just '-'
+  startsWith Exp{} = Just '*'
+  startsWith BoolAnd{} = Just 'a'
+  startsWith BoolOr{} = Just 'o'
+  startsWith Multiply{} = Just '*'
+  startsWith Divide{} = Just '/'
+  startsWith Plus{} = Just '+'
 
-binOpEndsWith :: BinOp a -> Char
-binOpEndsWith (Is a) = 's'
-binOpEndsWith (Minus a) = '-'
-binOpEndsWith (Exp a) = '*'
-binOpEndsWith (BoolAnd a) = 'd'
-binOpEndsWith (BoolOr a) = 'r'
-binOpEndsWith (Multiply a) = '*'
-binOpEndsWith (Divide a) = '/'
-binOpEndsWith (Plus a) = '+'
+instance EndsWith (BinOp a) where
+  endsWith Is{} = Just 's'
+  endsWith Minus{} = Just '-'
+  endsWith Exp{} = Just '*'
+  endsWith BoolAnd{} = Just 'd'
+  endsWith BoolOr{} = Just 'r'
+  endsWith Multiply{} = Just '*'
+  endsWith Divide{} = Just '/'
+  endsWith Plus{} = Just '+'
 
-exprStartsWith :: Expr v a -> Char
-exprStartsWith (List _ _) = '['
-exprStartsWith (Deref _ e _) = exprStartsWith e
-exprStartsWith (Call _ e _) = exprStartsWith e
-exprStartsWith None{} = 'N'
-exprStartsWith (BinOp _ e _ _ _ _) = exprStartsWith e
-exprStartsWith (Negate _ _) = '-'
-exprStartsWith Parens{} = '('
-exprStartsWith (Ident _ s) = head s
-exprStartsWith (Int _ i) = head $ show i
-exprStartsWith (Bool _ b) = head $ show b
+instance StartsWith (Expr v a) where
+  startsWith List{} = Just '['
+  startsWith (Deref _ e _) = startsWith e
+  startsWith (Call _ e _) = startsWith e
+  startsWith None{} = Just 'N'
+  startsWith (BinOp _ e _ _ _ _) = startsWith e
+  startsWith Negate{} = Just '-'
+  startsWith Parens{} = Just '('
+  startsWith (Ident _ s) = s ^? _head
+  startsWith (Int _ i) = show i ^? _head
+  startsWith (Bool _ b) = show b ^? _head
 
-exprEndsWith :: Expr v a -> Char
-exprEndsWith (List _ _) = ']'
-exprEndsWith (Deref a _ s) =
-  case s of
-    [] -> '.'
-    _ -> last s
-exprEndsWith Call{} = ')'
-exprEndsWith None{} = 'e'
-exprEndsWith (BinOp _ _ _ _ _ e) = exprEndsWith e
-exprEndsWith (Negate _ e) = exprEndsWith e
-exprEndsWith Parens{} = ')'
-exprEndsWith (Ident _ s) = last s
-exprEndsWith (Int _ i) = last $ show i
-exprEndsWith (Bool _ b) = last $ show b
+instance EndsWith (Expr v a) where
+  endsWith List{} = Just ']'
+  endsWith (Deref _ _ s) =
+    case s of
+      [] -> Just '.'
+      _ -> s ^? _last
+  endsWith Call{} = Just ')'
+  endsWith None{} = Just 'e'
+  endsWith (BinOp _ _ _ _ _ e) = endsWith e
+  endsWith (Negate _ e) = endsWith e
+  endsWith Parens{} = Just ')'
+  endsWith (Ident _ s) = s ^? _last
+  endsWith (Int _ i) = show i ^? _last
+  endsWith (Bool _ b) = show b ^? _last
+
+validateWhitespace
+  :: ( EndsWith x, StartsWith y
+     , AsSyntaxError e v a
+     )
+  => Expr v a
+  -> (x, x -> String)
+  -> [Whitespace]
+  -> (y, y -> String)
+  -> Validate [e] [Whitespace]
+validateWhitespace e (a, aStr) [] (b, bStr)
+  | Just c1 <- endsWith a
+  , Just c2 <- startsWith b
+  , isIdentifierChar c1
+  , isIdentifierChar c2
+  = Failure [_MissingSpacesIn # (aStr a, bStr b, e)]
+validateWhitespace _ _ ws _ = Success ws
 
 validateExprSyntax
   :: ( AsSyntaxError e v a
@@ -132,23 +162,9 @@ validateExprSyntax (None a) = pure $ None a
 validateExprSyntax e@(BinOp a e1 ws1 op ws2 e2) =
   BinOp a <$>
   validateExprSyntax e1 <*>
-  (if
-     null ws1 &&
-     isIdentifierChar (exprEndsWith e1) &&
-     isIdentifierChar (binOpStartsWith op)
-   then
-     Failure [_MissingSpacesIn # (renderExpr e1, renderBinOp op, e)]
-   else
-     Success ws1) <*>
+  validateWhitespace e (e1, renderExpr) ws1 (op, renderBinOp) <*>
   pure op <*>
-  (if
-     null ws2 &&
-     isIdentifierChar (binOpEndsWith op) &&
-     isIdentifierChar (exprStartsWith e2)
-   then
-     Failure [_MissingSpacesIn # (renderBinOp op, renderExpr e2, e)]
-   else
-     Success ws2) <*>
+  validateWhitespace e (op, renderBinOp) ws2 (e2, renderExpr) <*>
   validateExprSyntax e2
 
 validateStatementSyntax
