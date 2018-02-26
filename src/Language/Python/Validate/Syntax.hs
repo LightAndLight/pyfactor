@@ -101,7 +101,7 @@ validateExprSyntax
      )
   => Expr v a
   -> Validate [e] (Expr (Nub (Syntax ': v)) a)
-validateExprSyntax (Parens a e) = Parens a <$> validateExprSyntax e
+validateExprSyntax (Parens a ws1 e ws2) = Parens a ws1 <$> validateExprSyntax e <*> pure ws2
 validateExprSyntax (Bool a b) = pure $ Bool a b
 validateExprSyntax (Negate a ws expr) = Negate a ws <$> validateExprSyntax expr
 validateExprSyntax (Int a n) = pure $ Int a n

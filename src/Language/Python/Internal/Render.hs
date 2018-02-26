@@ -16,7 +16,10 @@ renderWhitespace Tab = "\t"
 renderWhitespace (Continued ws) = "\\\n" <> foldMap renderWhitespace ws
 
 renderExpr :: Expr v a -> String
-renderExpr (Parens _ e) = "(" <> renderExpr e <> ")"
+renderExpr (Parens _ ws1 e ws2) =
+  "(" <> foldMap renderWhitespace ws1 <>
+  renderExpr e <>
+  foldMap renderWhitespace ws2 <> ")"
 renderExpr (Bool _ b) = show b
 renderExpr (Negate _ ws expr) =
   "-" <> foldMap renderWhitespace ws <>

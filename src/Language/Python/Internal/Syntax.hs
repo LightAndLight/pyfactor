@@ -63,7 +63,7 @@ data Expr (v :: [*]) a
   | None a
   | BinOp a (Expr v a) [Whitespace] (BinOp a) [Whitespace] (Expr v a)
   | Negate a [Whitespace] (Expr v a)
-  | Parens a (Expr v a)
+  | Parens a [Whitespace] (Expr v a) [Whitespace]
   | Ident a String
   | Int a Integer
   | Bool a Bool
@@ -79,7 +79,7 @@ instance Num (Expr '[] ()) where
   signum = undefined
   abs = undefined
 instance Plated (Expr '[] ()) where
-  plate f (Parens a e) = Parens a <$> f e
+  plate f (Parens a ws1 e ws2) = Parens a ws1 <$> f e <*> pure ws2
   plate _ (Bool a b) = pure $ Bool a b
   plate f (List a exprs) = List a <$> traverse f exprs
   plate f (Deref a expr name) = Deref a <$> f expr <*> pure name
