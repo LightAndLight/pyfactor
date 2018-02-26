@@ -37,3 +37,9 @@ _Fundef =
   prism
     (\(a, b, c, d) -> Fundef a b c d)
     (\case; (coerce -> Fundef a b c d) -> Right (a, b, c, d); (coerce -> a) -> Left a)
+
+_Indents
+  :: Traversal'
+       (Statement v a)
+       [Whitespace]
+_Indents f = fmap coerce . (_Blocks._Wrapped) ((traverse._2) f . coerce)
