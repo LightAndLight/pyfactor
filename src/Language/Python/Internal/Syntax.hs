@@ -33,6 +33,15 @@ data Whitespace = Space | Tab | Continued [Whitespace] deriving (Eq, Show)
 
 newtype Block v a = Block [(a, [Whitespace], Statement v a)]
   deriving (Eq, Show)
+class HasBlocks s where
+  _Blocks :: Traversal (s v a) (s '[] a) (Block v a) (Block '[] a)
+instance HasBlocks Statement where
+  _Blocks f (Fundef a name params b) = Fundef a name (coerce params) <$> coerce (f b)
+  _Blocks _ (Return a expr) = pure $ Return a (coerce expr)
+  _Blocks _ (Expr a expr) = pure $ Expr a (coerce expr)
+  _Blocks f (If a e1 b) = If a (coerce e1) <$> coerce (f b)
+  _Blocks _ (Assign a e1 e2) = pure $ Assign a (coerce e1) (coerce e2)
+  _Blocks _ (Pass a) = pure $ Pass a
 
 data Statement (v :: [*]) a
   = Fundef a String (Params v a) (Block v a)

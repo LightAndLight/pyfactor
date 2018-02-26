@@ -1,8 +1,10 @@
+{-# language DataKinds #-}
 {-# language OverloadedStrings #-}
 module Example where
 
 import Control.Lens
-  ((^?), (&), (.~), (^.), (^..), folded, filtered)
+  ((^?), (&), (.~), (^.), (^..), folded, filtered, transform)
+import GHC.Natural
 import Language.Python.Internal.Optics
 import Language.Python.Internal.Syntax
 import Language.Python.Syntax
@@ -79,6 +81,7 @@ bracketing =
     ]
 
 -- | Fix mutable default arguments
+fixMDA :: Statement '[] () -> Maybe (Statement '[] ())
 fixMDA input = do
   (_, name, params, body) <- input ^? _Fundef
   targetParam <- params ^? folded._KeywordParam.filtered (isMutable._kpExpr)
@@ -94,6 +97,12 @@ fixMDA input = do
 
   pure $
     def_ name newparams (fixed : (body ^.. _Statements))
+
+indentSpaces :: Natural -> Statement v a -> Statement v a
+indentSpaces n = transform (_Indents .~ replicate (fromIntegral n) Space)
+
+indentTabs :: Statement v a -> Statement v a
+indentTabs = transform (_Indents .~ [Tab])
 
 {-
 def append_to(element, to=None):
