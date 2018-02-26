@@ -18,7 +18,7 @@ append_to a =
   Fundef a
     "append_to"
     [ PositionalParam a "element"
-    , KeywordParam a "to" (List a [])
+    , KeywordParam a "to" (List a [] CommaSepNone [])
     ]
     (Block
      [ (a, replicate 4 Space, Expr a $ Call a (Deref a (Ident a "to") "append") [] (PositionalArg a (Ident a "element") $ NoArgs a))
@@ -57,7 +57,7 @@ append_to'' a =
   Fundef a
     "append_to"
     [ PositionalParam a "element"
-    , KeywordParam a "to" (List a [])
+    , KeywordParam a "to" (List a [] CommaSepNone [])
     ]
     (Block
      [ (a, replicate 4 Space, Expr a $ Call a (Deref a (Ident a "to") "append") [] (PositionalArg a (Ident a "element") $ NoArgs a))

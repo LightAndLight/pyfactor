@@ -106,7 +106,8 @@ validateExprSyntax (Bool a b) = pure $ Bool a b
 validateExprSyntax (Negate a ws expr) = Negate a ws <$> validateExprSyntax expr
 validateExprSyntax (Int a n) = pure $ Int a n
 validateExprSyntax (Ident a name) = pure $ Ident a name
-validateExprSyntax (List a exprs) = List a <$> traverse validateExprSyntax exprs
+validateExprSyntax (List a ws1 exprs ws2) =
+  List a ws1 <$> traverse validateExprSyntax exprs <*> pure ws2
 validateExprSyntax (Deref a expr name) =
   Deref a <$>
   validateExprSyntax expr <*>

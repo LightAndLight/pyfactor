@@ -42,7 +42,7 @@ expr_ :: Expr '[] () -> Statement '[] ()
 expr_ = Expr ()
 
 list_ :: [Expr '[] ()] -> Expr '[] ()
-list_ = List ()
+list_ es = List () [] (listToCommaSep es) []
 
 is_ :: Expr '[] () -> Expr '[] () -> Expr '[] ()
 is_ a = BinOp () a [Space] (Is ()) [Space]

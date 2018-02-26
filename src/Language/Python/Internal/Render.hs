@@ -15,6 +15,14 @@ renderWhitespace Space = " "
 renderWhitespace Tab = "\t"
 renderWhitespace (Continued ws) = "\\\n" <> foldMap renderWhitespace ws
 
+renderCommaSep :: (a -> String) -> CommaSep a -> String
+renderCommaSep _ CommaSepNone = mempty
+renderCommaSep f (CommaSepOne a c) = f a <> foldMap ((<> ",") . foldMap renderWhitespace) c
+renderCommaSep f (CommaSepMany a ws1 ws2 c) =
+  f a <>
+  foldMap renderWhitespace ws1 <> "," <> foldMap renderWhitespace ws2 <>
+  renderCommaSep f c
+
 renderExpr :: Expr v a -> String
 renderExpr (Parens _ ws1 e ws2) =
   "(" <> foldMap renderWhitespace ws1 <>
@@ -29,7 +37,10 @@ renderExpr (Negate _ ws expr) =
       _ -> renderExpr expr
 renderExpr (Int _ n) = show n
 renderExpr (Ident _ name) = name
-renderExpr (List _ exprs) = "[" <> intercalate ", " (fmap renderExpr exprs) <> "]"
+renderExpr (List _ ws1 exprs ws2) =
+  "[" <> foldMap renderWhitespace ws1 <>
+  renderCommaSep renderExpr exprs <>
+  foldMap renderWhitespace ws2 <> "]"
 renderExpr (Call _ expr ws args) =
   renderExpr expr <>
   foldMap renderWhitespace ws <>

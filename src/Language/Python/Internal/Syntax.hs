@@ -1,4 +1,4 @@
-{-# language DeriveFunctor #-}
+{-# language DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 {-# language DataKinds, PolyKinds #-}
 {-# language TemplateHaskell, TypeFamilies, FlexibleInstances,
   MultiParamTypeClasses #-}
@@ -56,8 +56,18 @@ instance Plated (Statement v a) where
   plate f (If a b sts) = If a b <$> (_Wrapped.traverse._3) f sts
   plate _ p = pure p
 
+data CommaSep a
+  = CommaSepNone
+  | CommaSepOne a (Maybe [Whitespace])
+  | CommaSepMany a [Whitespace] [Whitespace] (CommaSep a)
+  deriving (Eq, Show, Functor, Foldable, Traversable)
+listToCommaSep :: [a] -> CommaSep a
+listToCommaSep [] = CommaSepNone
+listToCommaSep [a] = CommaSepOne a Nothing
+listToCommaSep (a:as) = CommaSepMany a [] [] $ listToCommaSep as
+
 data Expr (v :: [*]) a
-  = List a [Expr v a]
+  = List a [Whitespace] (CommaSep (Expr v a)) [Whitespace]
   | Deref a (Expr v a) String
   | Call a (Expr v a) [Whitespace] (Args v a)
   | None a
@@ -81,7 +91,7 @@ instance Num (Expr '[] ()) where
 instance Plated (Expr '[] ()) where
   plate f (Parens a ws1 e ws2) = Parens a ws1 <$> f e <*> pure ws2
   plate _ (Bool a b) = pure $ Bool a b
-  plate f (List a exprs) = List a <$> traverse f exprs
+  plate f (List a ws1 exprs ws2) = List a ws1 <$> traverse f exprs <*> pure ws2
   plate f (Deref a expr name) = Deref a <$> f expr <*> pure name
   plate f (Call a expr ws args) = Call a <$> f expr <*> pure ws <*> _Exprs f args
   plate _ (None a) = pure $ None a
