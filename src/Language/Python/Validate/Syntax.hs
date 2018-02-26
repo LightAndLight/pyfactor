@@ -15,7 +15,6 @@ import Data.Coerce
 import Data.Semigroup
 import Data.Type.Set
 import Data.Validate
-import GHC.Generics
 import Language.Python.Internal.Render
 import Language.Python.Internal.Syntax
 import Language.Python.Validate.Indentation
@@ -23,53 +22,11 @@ import Language.Python.Validate.Syntax.Error
 
 data Syntax
 
-class GStartsWith f where
-  gstartsWith :: f a -> Maybe Char
-
 class StartsWith s where
   startsWith :: s -> Maybe Char
-  default startsWith :: (Generic s, GStartsWith (Rep s))  => s -> Maybe Char
-  startsWith = gstartsWith . from
-
-instance GStartsWith f => GStartsWith (f :*: g) where
-  gstartsWith (f :*: _) = gstartsWith f
-
-instance GStartsWith U1 where
-  gstartsWith _ = Nothing
-
-instance GStartsWith V1 where
-  gstartsWith _ = Nothing
-
-instance (GStartsWith f, GStartsWith g) => GStartsWith (f :+: g) where
-  gstartsWith (L1 f) = gstartsWith f
-  gstartsWith (R1 g) = gstartsWith g
-
-instance GStartsWith f => GStartsWith (M1 i c f) where
-  gstartsWith (M1 f) = gstartsWith f
-
-class GEndsWith f where
-  gendsWith :: f a -> Maybe Char
 
 class EndsWith s where
   endsWith :: s -> Maybe Char
-  default endsWith :: (Generic s, GEndsWith (Rep s)) => s -> Maybe Char
-  endsWith = gendsWith . from
-
-instance GEndsWith g => GEndsWith (f :*: g) where
-  gendsWith (_ :*: g) = gendsWith g
-
-instance (GEndsWith f, GEndsWith g) => GEndsWith (f :+: g) where
-  gendsWith (L1 f) = gendsWith f
-  gendsWith (R1 g) = gendsWith g
-
-instance GEndsWith f => GEndsWith (M1 i c f) where
-  gendsWith (M1 f) = gendsWith f
-
-instance GEndsWith U1 where
-  gendsWith _ = Nothing
-
-instance GEndsWith V1 where
-  gendsWith _ = Nothing
 
 isIdentifierChar :: Char -> Bool
 isIdentifierChar = liftA2 (||) isLetter (=='_')
