@@ -54,7 +54,7 @@ instance EndsWith (BinOp a) where
 instance StartsWith (Expr v a) where
   startsWith List{} = Just '['
   startsWith (Deref _ e _) = startsWith e
-  startsWith (Call _ e _) = startsWith e
+  startsWith (Call _ e _ _) = startsWith e
   startsWith None{} = Just 'N'
   startsWith (BinOp _ e _ _ _ _) = startsWith e
   startsWith Negate{} = Just '-'
@@ -111,9 +111,10 @@ validateExprSyntax (Deref a expr name) =
   Deref a <$>
   validateExprSyntax expr <*>
   pure name
-validateExprSyntax (Call a expr args) =
+validateExprSyntax (Call a expr ws args) =
   Call a <$>
   validateExprSyntax expr <*>
+  pure ws <*>
   validateArgsSyntax args
 validateExprSyntax (None a) = pure $ None a
 validateExprSyntax e@(BinOp a e1 ws1 op ws2 e2) =

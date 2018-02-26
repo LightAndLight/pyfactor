@@ -30,7 +30,10 @@ renderExpr (Negate _ ws expr) =
 renderExpr (Int _ n) = show n
 renderExpr (Ident _ name) = name
 renderExpr (List _ exprs) = "[" <> intercalate ", " (fmap renderExpr exprs) <> "]"
-renderExpr (Call _ expr args) = renderExpr expr <> renderArgs args
+renderExpr (Call _ expr ws args) =
+  renderExpr expr <>
+  foldMap renderWhitespace ws <>
+  renderArgs args
 renderExpr (Deref _ expr name) =
   (case expr of
     Int{} -> "(" <> renderExpr expr <> ")"

@@ -33,7 +33,7 @@ mkArgs (a:as) =
     AK name expr -> undefined
 
 call_ :: Expr '[] () -> [Arg] -> Expr '[] ()
-call_ expr args = Call () expr (mkArgs args)
+call_ expr args = Call () expr [] (mkArgs args)
 
 return_ :: Expr '[] () -> Statement '[] ()
 return_ = Return ()

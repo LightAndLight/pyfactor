@@ -59,7 +59,7 @@ instance Plated (Statement v a) where
 data Expr (v :: [*]) a
   = List a [Expr v a]
   | Deref a (Expr v a) String
-  | Call a (Expr v a) (Args v a)
+  | Call a (Expr v a) [Whitespace] (Args v a)
   | None a
   | BinOp a (Expr v a) [Whitespace] (BinOp a) [Whitespace] (Expr v a)
   | Negate a [Whitespace] (Expr v a)
@@ -83,7 +83,7 @@ instance Plated (Expr '[] ()) where
   plate _ (Bool a b) = pure $ Bool a b
   plate f (List a exprs) = List a <$> traverse f exprs
   plate f (Deref a expr name) = Deref a <$> f expr <*> pure name
-  plate f (Call a expr args) = Call a <$> f expr <*> _Exprs f args
+  plate f (Call a expr ws args) = Call a <$> f expr <*> pure ws <*> _Exprs f args
   plate _ (None a) = pure $ None a
   plate f (BinOp a e1 ws1 op ws2 e2) =
     (\e1' e2' -> BinOp a e1' ws1 op ws2 e2') <$> f e1 <*> f e2
