@@ -149,7 +149,8 @@ renderStatement (Fundef _ ws1 name ws2 params ws3 ws4 nl body) =
       foldMap
         (\(_, a, b, nl) -> maybe id endWith nl $ (foldMap renderWhitespace a <>) <$> renderStatement b)
         (view _Wrapped body)
-renderStatement (Return _ expr) = OneLine $ "return " <> renderExpr expr
+renderStatement (Return _ ws expr) =
+  OneLine $ "return" <> foldMap renderWhitespace ws <> renderExpr expr
 renderStatement (Expr _ expr) = OneLine $ renderExpr expr
 renderStatement (If _ expr body) = ManyLines firstLine LF restLines
   where

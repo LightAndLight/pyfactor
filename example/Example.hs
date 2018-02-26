@@ -27,7 +27,7 @@ append_to a =
     LF
     (Block
      [ (a, replicate 4 Space, Expr a $ Call a (Deref a (Ident a "to") [] [] "append") [] (PositionalArg a (Ident a "element") $ NoArgs a), Just LF)
-     , (a, replicate 4 Space, Return a (Ident a "to"), Just LF)
+     , (a, replicate 4 Space, Return a [Space] (Ident a "to"), Just LF)
      ])
 
 {-
@@ -71,7 +71,7 @@ append_to'' a =
     LF
     (Block
      [ (a, replicate 4 Space, Expr a $ Call a (Deref a (Ident a "to") [] [] "append") [] (PositionalArg a (Ident a "element") $ NoArgs a), Just LF)
-     , (a, replicate 4 Space ++ [Continued [Space, Space]], Return a (Ident a "to"), Just LF)
+     , (a, replicate 4 Space ++ [Continued [Space, Space]], Return a [Space] (Ident a "to"), Just LF)
      ])
 
 bracketing =

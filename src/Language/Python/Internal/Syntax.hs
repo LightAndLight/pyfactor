@@ -39,7 +39,7 @@ class HasBlocks s where
 instance HasBlocks Statement where
   _Blocks f (Fundef a ws1 name ws2 params ws3 ws4 nl b) =
     Fundef a ws1 name ws2 (coerce params) ws3 ws4 nl <$> coerce (f b)
-  _Blocks _ (Return a expr) = pure $ Return a (coerce expr)
+  _Blocks _ (Return a ws expr) = pure $ Return a ws (coerce expr)
   _Blocks _ (Expr a expr) = pure $ Expr a (coerce expr)
   _Blocks f (If a e1 b) = If a (coerce e1) <$> coerce (f b)
   _Blocks _ (Assign a e1 e2) = pure $ Assign a (coerce e1) (coerce e2)
@@ -53,7 +53,7 @@ data Statement (v :: [*]) a
       [Whitespace] (Params v a)
       [Whitespace] [Whitespace] Newline
       (Block v a)
-  | Return a (Expr v a)
+  | Return a [Whitespace] (Expr v a)
   | Expr a (Expr v a)
   | If a (Expr v a) (Block v a)
   | Assign a (Expr v a) (Expr v a)
@@ -138,7 +138,7 @@ instance HasExprs Statement where
     pure ws4 <*>
     pure nl <*>
     (_Wrapped.traverse._3._Exprs) f sts
-  _Exprs f (Return a e) = Return a <$> f e
+  _Exprs f (Return a ws e) = Return a ws <$> f e
   _Exprs f (Expr a e) = Expr a <$> f e
   _Exprs f (If a e sts) = If a <$> f e <*> (_Wrapped.traverse._3._Exprs) f sts
   _Exprs f (Assign a e1 e2) = Assign a <$> f e1 <*> f e2

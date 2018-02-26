@@ -3,6 +3,7 @@
 {-# language FlexibleContexts #-}
 {-# language PolyKinds #-}
 {-# language TypeOperators #-}
+{-# language TypeSynonymInstances, FlexibleInstances #-}
 module Language.Python.Validate.Syntax where
 
 import Control.Applicative
@@ -78,21 +79,27 @@ instance EndsWith (Expr v a) where
   endsWith (Int _ i) = show i ^? _last
   endsWith (Bool _ b) = show b ^? _last
 
+instance StartsWith String where
+  startsWith a = a ^? _head
+
+instance EndsWith String where
+  endsWith a = a ^? _last
+
 validateWhitespace
   :: ( EndsWith x, StartsWith y
      , AsSyntaxError e v a
      )
-  => Expr v a
+  => a
   -> (x, x -> String)
   -> [Whitespace]
   -> (y, y -> String)
   -> Validate [e] [Whitespace]
-validateWhitespace e (a, aStr) [] (b, bStr)
+validateWhitespace ann (a, aStr) [] (b, bStr)
   | Just c1 <- endsWith a
   , Just c2 <- startsWith b
   , isIdentifierChar c1
   , isIdentifierChar c2
-  = Failure [_MissingSpacesIn # (aStr a, bStr b, e)]
+  = Failure [_MissingSpacesIn # (ann, aStr a, bStr b)]
 validateWhitespace _ _ ws _ = Success ws
 
 validateExprSyntax
@@ -123,9 +130,9 @@ validateExprSyntax (None a) = pure $ None a
 validateExprSyntax e@(BinOp a e1 ws1 op ws2 e2) =
   BinOp a <$>
   validateExprSyntax e1 <*>
-  validateWhitespace e (e1, renderExpr) ws1 (op, renderBinOp) <*>
+  validateWhitespace a (e1, renderExpr) ws1 (op, renderBinOp) <*>
   pure op <*>
-  validateWhitespace e (op, renderBinOp) ws2 (e2, renderExpr) <*>
+  validateWhitespace a (op, renderBinOp) ws2 (e2, renderExpr) <*>
   validateExprSyntax e2
 
 validateBlockSyntax
@@ -157,8 +164,9 @@ validateStatementSyntax (Fundef a ws1 name ws2 params ws3 ws4 nl body) =
   pure ws4 <*>
   pure nl <*>
   validateBlockSyntax body
-validateStatementSyntax (Return a expr) =
+validateStatementSyntax (Return a ws expr) =
   Return a <$>
+  validateWhitespace a ("return", id) ws (expr, renderExpr) <*>
   validateExprSyntax expr
 validateStatementSyntax (Expr a expr) =
   Expr a <$>

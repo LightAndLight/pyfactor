@@ -10,7 +10,7 @@ data SyntaxError (v :: [*]) a
   = PositionalAfterKeyword a String
   | CannotAssignTo a (Expr v a)
   | DuplicateArgument a String
-  | MissingSpacesIn String String (Expr v a)
+  | MissingSpacesIn a String String
   | ExpectedNewlineAfter (a, [Whitespace], Statement v a, Maybe Newline)
   deriving (Eq, Show)
 

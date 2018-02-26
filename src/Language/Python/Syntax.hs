@@ -42,7 +42,7 @@ call_ :: Expr '[] () -> [Arg] -> Expr '[] ()
 call_ expr args = Call () expr [] (mkArgs args)
 
 return_ :: Expr '[] () -> Statement '[] ()
-return_ = Return ()
+return_ = Return () [Space]
 
 expr_ :: Expr '[] () -> Statement '[] ()
 expr_ = Expr ()
