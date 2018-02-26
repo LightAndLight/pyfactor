@@ -101,7 +101,7 @@ infixl 7 .%
 infixr 8 .**
 
 (/>) :: Expr '[] () -> String -> Expr '[] ()
-(/>) = Deref ()
+(/>) a = Deref () a [] []
 infixl 9 />
 
 neg :: Expr '[] () -> Expr '[] ()

@@ -45,11 +45,12 @@ renderExpr (Call _ expr ws args) =
   renderExpr expr <>
   foldMap renderWhitespace ws <>
   renderArgs args
-renderExpr (Deref _ expr name) =
+renderExpr (Deref _ expr ws1 ws2 name) =
   (case expr of
     Int{} -> "(" <> renderExpr expr <> ")"
     _ -> renderExpr expr) <>
-  "." <> name
+  foldMap renderWhitespace ws1 <> "." <> foldMap renderWhitespace ws2 <>
+  name
 renderExpr (None _) = "None"
 renderExpr (BinOp _ e1 ws1 op ws2 e2) =
   let

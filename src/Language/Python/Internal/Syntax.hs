@@ -68,7 +68,7 @@ listToCommaSep (a:as) = CommaSepMany a [] [] $ listToCommaSep as
 
 data Expr (v :: [*]) a
   = List a [Whitespace] (CommaSep (Expr v a)) [Whitespace]
-  | Deref a (Expr v a) String
+  | Deref a (Expr v a) [Whitespace] [Whitespace] String
   | Call a (Expr v a) [Whitespace] (Args v a)
   | None a
   | BinOp a (Expr v a) [Whitespace] (BinOp a) [Whitespace] (Expr v a)
@@ -92,7 +92,8 @@ instance Plated (Expr '[] ()) where
   plate f (Parens a ws1 e ws2) = Parens a ws1 <$> f e <*> pure ws2
   plate _ (Bool a b) = pure $ Bool a b
   plate f (List a ws1 exprs ws2) = List a ws1 <$> traverse f exprs <*> pure ws2
-  plate f (Deref a expr name) = Deref a <$> f expr <*> pure name
+  plate f (Deref a expr ws1 ws2 name) =
+    Deref a <$> f expr <*> pure ws1 <*> pure ws2 <*> pure name
   plate f (Call a expr ws args) = Call a <$> f expr <*> pure ws <*> _Exprs f args
   plate _ (None a) = pure $ None a
   plate f (BinOp a e1 ws1 op ws2 e2) =

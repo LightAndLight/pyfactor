@@ -53,7 +53,7 @@ instance EndsWith (BinOp a) where
 
 instance StartsWith (Expr v a) where
   startsWith List{} = Just '['
-  startsWith (Deref _ e _) = startsWith e
+  startsWith (Deref _ e _ _ _) = startsWith e
   startsWith (Call _ e _ _) = startsWith e
   startsWith None{} = Just 'N'
   startsWith (BinOp _ e _ _ _ _) = startsWith e
@@ -65,7 +65,7 @@ instance StartsWith (Expr v a) where
 
 instance EndsWith (Expr v a) where
   endsWith List{} = Just ']'
-  endsWith (Deref _ _ s) =
+  endsWith (Deref _ _ _ _ s) =
     case s of
       [] -> Just '.'
       _ -> s ^? _last
@@ -108,9 +108,11 @@ validateExprSyntax (Int a n) = pure $ Int a n
 validateExprSyntax (Ident a name) = pure $ Ident a name
 validateExprSyntax (List a ws1 exprs ws2) =
   List a ws1 <$> traverse validateExprSyntax exprs <*> pure ws2
-validateExprSyntax (Deref a expr name) =
+validateExprSyntax (Deref a expr ws1 ws2 name) =
   Deref a <$>
   validateExprSyntax expr <*>
+  pure ws1 <*>
+  pure ws2 <*>
   pure name
 validateExprSyntax (Call a expr ws args) =
   Call a <$>

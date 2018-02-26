@@ -21,7 +21,7 @@ append_to a =
     , KeywordParam a "to" (List a [] CommaSepNone [])
     ]
     (Block
-     [ (a, replicate 4 Space, Expr a $ Call a (Deref a (Ident a "to") "append") [] (PositionalArg a (Ident a "element") $ NoArgs a))
+     [ (a, replicate 4 Space, Expr a $ Call a (Deref a (Ident a "to") [] [] "append") [] (PositionalArg a (Ident a "element") $ NoArgs a))
      , (a, replicate 4 Space, Return a (Ident a "to"))
      ])
 
@@ -60,7 +60,7 @@ append_to'' a =
     , KeywordParam a "to" (List a [] CommaSepNone [])
     ]
     (Block
-     [ (a, replicate 4 Space, Expr a $ Call a (Deref a (Ident a "to") "append") [] (PositionalArg a (Ident a "element") $ NoArgs a))
+     [ (a, replicate 4 Space, Expr a $ Call a (Deref a (Ident a "to") [] [] "append") [] (PositionalArg a (Ident a "element") $ NoArgs a))
      , (a, replicate 4 Space ++ [Continued [Space, Space]], Return a (Ident a "to"))
      ])
 
