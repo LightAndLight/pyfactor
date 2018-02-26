@@ -13,6 +13,7 @@ import Data.Coerce
 import Data.Semigroup
 import Data.Type.Set
 import Data.Validate
+import Language.Python.Internal.Render
 import Language.Python.Internal.Syntax
 import Language.Python.Validate.Indentation
 import Language.Python.Validate.Syntax.Error
@@ -47,7 +48,7 @@ exprStartsWith (List _ _) = '['
 exprStartsWith (Deref _ e _) = exprStartsWith e
 exprStartsWith (Call _ e _) = exprStartsWith e
 exprStartsWith None{} = 'N'
-exprStartsWith (BinOp _ _ _ _ e _) = exprStartsWith e
+exprStartsWith (BinOp _ e _ _ _ _) = exprStartsWith e
 exprStartsWith (Negate _ _) = '-'
 exprStartsWith Parens{} = '('
 exprStartsWith (Ident _ s) = head s
@@ -90,20 +91,26 @@ validateExprSyntax (Call a expr args) =
   validateExprSyntax expr <*>
   validateArgsSyntax args
 validateExprSyntax (None a) = pure $ None a
-validateExprSyntax e@(BinOp a op ws1 ws2 e1 e2) =
-  uncurry (BinOp a op) <$>
-  (if
-     (null ws1 &&
-      isIdentifierChar (exprEndsWith e1) &&
-      isIdentifierChar (binOpStartsWith op)) ||
-     (null ws2 &&
-      isIdentifierChar (binOpEndsWith op) &&
-      isIdentifierChar (exprStartsWith e2))
-   then
-     Failure [_MissingSpacesInExpr # e]
-   else
-     Success (ws1, ws2)) <*>
+validateExprSyntax e@(BinOp a e1 ws1 op ws2 e2) =
+  BinOp a <$>
   validateExprSyntax e1 <*>
+  (if
+     null ws1 &&
+     isIdentifierChar (exprEndsWith e1) &&
+     isIdentifierChar (binOpStartsWith op)
+   then
+     Failure [_MissingSpacesIn # (renderExpr e1, renderBinOp op, e)]
+   else
+     Success ws1) <*>
+  pure op <*>
+  (if
+     null ws2 &&
+     isIdentifierChar (binOpEndsWith op) &&
+     isIdentifierChar (exprStartsWith e2)
+   then
+     Failure [_MissingSpacesIn # (renderBinOp op, renderExpr e2, e)]
+   else
+     Success ws2) <*>
   validateExprSyntax e2
 
 validateStatementSyntax

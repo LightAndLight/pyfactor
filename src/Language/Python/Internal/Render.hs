@@ -20,7 +20,7 @@ renderExpr (Parens _ e) = "(" <> renderExpr e <> ")"
 renderExpr (Bool _ b) = show b
 renderExpr (Negate _ expr) =
   "-" <> case expr of
-           BinOp _ Exp{} _ _ _ _ -> renderExpr expr
+           BinOp _ _ _ Exp{} _ _ -> renderExpr expr
            BinOp{} -> "(" <> renderExpr expr <> ")"
            _ -> renderExpr expr
 renderExpr (Int _ n) = show n
@@ -33,18 +33,18 @@ renderExpr (Deref _ expr name) =
     _ -> renderExpr expr) <>
   "." <> name
 renderExpr (None _) = "None"
-renderExpr (BinOp _ op ws1 ws2 e1 e2) =
+renderExpr (BinOp _ e1 ws1 op ws2 e2) =
   let
     entry = lookupOpEntry op operatorTable
 
     lEntry =
       case e1 of
-        BinOp _ lOp _ _ _ _ -> Just $ lookupOpEntry lOp operatorTable
+        BinOp _ _ _ lOp _ _ -> Just $ lookupOpEntry lOp operatorTable
         _ -> Nothing
 
     rEntry =
       case e2 of
-        BinOp _ rOp _ _ _ _ -> Just $ lookupOpEntry rOp operatorTable
+        BinOp _ _ _ rOp _ _ -> Just $ lookupOpEntry rOp operatorTable
         _ -> Nothing
 
     (e1f, e2f) =
