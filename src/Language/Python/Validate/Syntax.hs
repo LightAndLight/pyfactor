@@ -72,7 +72,7 @@ instance EndsWith (Expr v a) where
   endsWith Call{} = Just ')'
   endsWith None{} = Just 'e'
   endsWith (BinOp _ _ _ _ _ e) = endsWith e
-  endsWith (Negate _ e) = endsWith e
+  endsWith (Negate _ _ e) = endsWith e
   endsWith Parens{} = Just ')'
   endsWith (Ident _ s) = s ^? _last
   endsWith (Int _ i) = show i ^? _last
@@ -103,7 +103,7 @@ validateExprSyntax
   -> Validate [e] (Expr (Nub (Syntax ': v)) a)
 validateExprSyntax (Parens a e) = Parens a <$> validateExprSyntax e
 validateExprSyntax (Bool a b) = pure $ Bool a b
-validateExprSyntax (Negate a expr) = Negate a <$> validateExprSyntax expr
+validateExprSyntax (Negate a ws expr) = Negate a ws <$> validateExprSyntax expr
 validateExprSyntax (Int a n) = pure $ Int a n
 validateExprSyntax (Ident a name) = pure $ Ident a name
 validateExprSyntax (List a exprs) = List a <$> traverse validateExprSyntax exprs

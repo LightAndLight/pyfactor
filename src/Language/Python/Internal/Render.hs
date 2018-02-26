@@ -18,11 +18,12 @@ renderWhitespace (Continued ws) = "\\\n" <> foldMap renderWhitespace ws
 renderExpr :: Expr v a -> String
 renderExpr (Parens _ e) = "(" <> renderExpr e <> ")"
 renderExpr (Bool _ b) = show b
-renderExpr (Negate _ expr) =
-  "-" <> case expr of
-           BinOp _ _ _ Exp{} _ _ -> renderExpr expr
-           BinOp{} -> "(" <> renderExpr expr <> ")"
-           _ -> renderExpr expr
+renderExpr (Negate _ ws expr) =
+  "-" <> foldMap renderWhitespace ws <>
+    case expr of
+      BinOp _ _ _ Exp{} _ _ -> renderExpr expr
+      BinOp{} -> "(" <> renderExpr expr <> ")"
+      _ -> renderExpr expr
 renderExpr (Int _ n) = show n
 renderExpr (Ident _ name) = name
 renderExpr (List _ exprs) = "[" <> intercalate ", " (fmap renderExpr exprs) <> "]"

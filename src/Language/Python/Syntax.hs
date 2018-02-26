@@ -105,7 +105,7 @@ infixr 8 .**
 infixl 9 />
 
 neg :: Expr '[] () -> Expr '[] ()
-neg = Negate ()
+neg = negate
 
 if_ :: Expr '[] () -> [Statement '[] ()] -> Statement '[] ()
 if_ e sts = If () e (Block $ (,,) () [Space, Space, Space, Space] <$> sts)

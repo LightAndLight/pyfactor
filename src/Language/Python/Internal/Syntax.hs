@@ -62,7 +62,7 @@ data Expr (v :: [*]) a
   | Call a (Expr v a) (Args v a)
   | None a
   | BinOp a (Expr v a) [Whitespace] (BinOp a) [Whitespace] (Expr v a)
-  | Negate a (Expr v a)
+  | Negate a [Whitespace] (Expr v a)
   | Parens a (Expr v a)
   | Ident a String
   | Int a Integer
@@ -72,7 +72,7 @@ instance IsString (Expr '[] ()) where
   fromString = Ident ()
 instance Num (Expr '[] ()) where
   fromInteger = Int ()
-  negate = Negate ()
+  negate = Negate () []
   (+) a = BinOp () a [Space] (Plus ()) [Space]
   (*) a = BinOp () a [Space] (Multiply ()) [Space]
   (-) a = BinOp () a [Space] (Minus ()) [Space]
@@ -89,7 +89,7 @@ instance Plated (Expr '[] ()) where
     (\e1' e2' -> BinOp a e1' ws1 op ws2 e2') <$> f e1 <*> f e2
   plate _ (Ident a name) = pure $ Ident a name
   plate _ (Int a n) = pure $ Int a n
-  plate f (Negate a expr) = Negate a <$> f expr
+  plate f (Negate a ws expr) = Negate a ws <$> f expr
 
 data BinOp a
   = Is a
