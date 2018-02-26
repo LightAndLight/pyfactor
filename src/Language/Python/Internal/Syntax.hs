@@ -12,6 +12,7 @@ import Control.Lens.Traversal
 import Control.Lens.Wrapped
 import Data.Coerce
 import Data.Functor
+import Data.List.NonEmpty
 import Data.Monoid
 import Data.String
 
@@ -31,20 +32,27 @@ instance HasExprs Args where
 
 data Whitespace = Space | Tab | Continued [Whitespace] deriving (Eq, Show)
 
-newtype Block v a = Block [(a, [Whitespace], Statement v a)]
+newtype Block v a = Block { unBlock :: [(a, [Whitespace], Statement v a, Maybe Newline)] }
   deriving (Eq, Show)
 class HasBlocks s where
   _Blocks :: Traversal (s v a) (s '[] a) (Block v a) (Block '[] a)
 instance HasBlocks Statement where
-  _Blocks f (Fundef a name params b) = Fundef a name (coerce params) <$> coerce (f b)
+  _Blocks f (Fundef a ws1 name ws2 params ws3 ws4 nl b) =
+    Fundef a ws1 name ws2 (coerce params) ws3 ws4 nl <$> coerce (f b)
   _Blocks _ (Return a expr) = pure $ Return a (coerce expr)
   _Blocks _ (Expr a expr) = pure $ Expr a (coerce expr)
   _Blocks f (If a e1 b) = If a (coerce e1) <$> coerce (f b)
   _Blocks _ (Assign a e1 e2) = pure $ Assign a (coerce e1) (coerce e2)
   _Blocks _ (Pass a) = pure $ Pass a
 
+data Newline = CR | LF | CRLF deriving (Eq, Show)
+
 data Statement (v :: [*]) a
-  = Fundef a String (Params v a) (Block v a)
+  = Fundef a
+      (NonEmpty Whitespace) String
+      [Whitespace] (Params v a)
+      [Whitespace] [Whitespace] Newline
+      (Block v a)
   | Return a (Expr v a)
   | Expr a (Expr v a)
   | If a (Expr v a) (Block v a)
@@ -52,7 +60,8 @@ data Statement (v :: [*]) a
   | Pass a
   deriving (Eq, Show)
 instance Plated (Statement v a) where
-  plate f (Fundef a b c sts) = Fundef a b c <$> (_Wrapped.traverse._3) f sts
+  plate f (Fundef a ws1 b ws2 c ws3 ws4 nl sts) =
+    Fundef a ws1 b ws2 c ws3 ws4 nl <$> (_Wrapped.traverse._3) f sts
   plate f (If a b sts) = If a b <$> (_Wrapped.traverse._3) f sts
   plate _ p = pure p
 
@@ -122,9 +131,12 @@ instance HasExprs Param where
   _Exprs _ p = pure $ coerce p
 
 instance HasExprs Statement where
-  _Exprs f (Fundef a name params sts) =
-    Fundef a name <$>
+  _Exprs f (Fundef a ws1 name ws2 params ws3 ws4 nl sts) =
+    Fundef a ws1 name ws2 <$>
     (traverse._Exprs) f params <*>
+    pure ws3 <*>
+    pure ws4 <*>
+    pure nl <*>
     (_Wrapped.traverse._3._Exprs) f sts
   _Exprs f (Return a e) = Return a <$> f e
   _Exprs f (Expr a e) = Expr a <$> f e

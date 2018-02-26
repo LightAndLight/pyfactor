@@ -1,3 +1,5 @@
+{-# language GeneralizedNewtypeDeriving, DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
+{-# language TemplateHaskell #-}
 module Language.Python.Internal.Render where
 
 import Control.Applicative
@@ -7,13 +9,53 @@ import Control.Lens.Prism
 import Control.Lens.Wrapped
 import Data.List
 import Data.Maybe
-import Data.Monoid
+import Data.Semigroup
 import Language.Python.Internal.Syntax
+
+data Lines a
+  = NoLines
+  | OneLine a
+  | ManyLines a Newline (Lines a)
+  deriving (Eq, Show, Functor, Foldable, Traversable)
+listToLines :: Newline -> [a] -> Lines a
+listToLines _ [] = NoLines
+listToLines _ [a] = OneLine a
+listToLines nl (a:as) = ManyLines a nl $ listToLines nl as
+
+endWith :: Newline -> Lines a -> Lines a
+endWith nl NoLines = NoLines
+endWith nl (OneLine a) = ManyLines a nl NoLines
+endWith nl (ManyLines a nl' as) =
+  ManyLines
+    a
+    (case as of; NoLines -> nl; _ -> nl')
+    (case as of; NoLines -> NoLines; _ -> endWith nl as)
+
+renderLines :: Lines String -> String
+renderLines NoLines = ""
+renderLines (OneLine a) = a
+renderLines (ManyLines a nl ls) = a <> renderNewline nl <> renderLines ls
+
+instance Semigroup a => Semigroup (Lines a) where
+  NoLines <> a = a
+  OneLine a <> NoLines = OneLine a
+  OneLine a <> OneLine b = OneLine (a <> b)
+  OneLine a <> ManyLines b nl ls = ManyLines (a <> b) nl ls
+  ManyLines a nl ls <> b = ManyLines a nl (ls <> b)
+
+instance Semigroup a => Monoid (Lines a) where
+  mempty = NoLines
+  mappend = (<>)
 
 renderWhitespace :: Whitespace -> String
 renderWhitespace Space = " "
 renderWhitespace Tab = "\t"
 renderWhitespace (Continued ws) = "\\\n" <> foldMap renderWhitespace ws
+
+renderNewline :: Newline -> String
+renderNewline CR = "\r"
+renderNewline LF = "\n"
+renderNewline CRLF = "\r\n"
 
 renderCommaSep :: (a -> String) -> CommaSep a -> String
 renderCommaSep _ CommaSepNone = mempty
@@ -95,17 +137,30 @@ renderExpr (BinOp _ e1 ws1 op ws2 e2) =
   where
     bracket a = "(" <> a <> ")"
 
-renderStatement :: Statement v a -> [String]
-renderStatement (Fundef _ name params body) =
-  ("def " <> name <> renderParams params <> ":") :
-  (view _Wrapped body >>= \(_, a, b) -> (foldMap renderWhitespace a <>) <$> renderStatement b)
-renderStatement (Return _ expr) = ["return " <> renderExpr expr]
-renderStatement (Expr _ expr) = [renderExpr expr]
-renderStatement (If _ expr body) =
-  ("if " <> renderExpr expr <> ":") :
-  (view _Wrapped body >>= \(_, a, b) -> (foldMap renderWhitespace a <>) <$> renderStatement b)
-renderStatement (Assign _ lvalue rvalue) = [renderExpr lvalue <> " = " <> renderExpr rvalue]
-renderStatement (Pass _) = ["pass"]
+renderStatement :: Statement v a -> Lines String
+renderStatement (Fundef _ ws1 name ws2 params ws3 ws4 nl body) =
+  ManyLines firstLine nl restLines
+  where
+    firstLine =
+      "def" <> foldMap renderWhitespace ws1 <> name <>
+      foldMap renderWhitespace ws2 <> renderParams params <>
+      foldMap renderWhitespace ws3 <> ":" <> foldMap renderWhitespace ws4
+    restLines =
+      foldMap
+        (\(_, a, b, nl) -> maybe id endWith nl $ (foldMap renderWhitespace a <>) <$> renderStatement b)
+        (view _Wrapped body)
+renderStatement (Return _ expr) = OneLine $ "return " <> renderExpr expr
+renderStatement (Expr _ expr) = OneLine $ renderExpr expr
+renderStatement (If _ expr body) = ManyLines firstLine LF restLines
+  where
+    firstLine = "if " <> renderExpr expr <> ":"
+    restLines =
+      foldMap
+        (\(_, a, b, nl) -> maybe id endWith nl $ (foldMap renderWhitespace a <>) <$> renderStatement b)
+        (view _Wrapped body)
+renderStatement (Assign _ lvalue rvalue) =
+  OneLine $ renderExpr lvalue <> " = " <> renderExpr rvalue
+renderStatement (Pass _) = OneLine "pass"
 
 renderArgs :: Args v a -> String
 renderArgs a = "(" <> go a <> ")"

@@ -6,7 +6,7 @@
 module Language.Python.Validate.Syntax where
 
 import Control.Applicative
-import Control.Lens ((#), _Wrapped, _head, _last)
+import Control.Lens ((#), (^.), _head, _last)
 import Control.Lens.Fold
 import Control.Lens.Tuple
 import Control.Lens.Traversal
@@ -128,16 +128,35 @@ validateExprSyntax e@(BinOp a e1 ws1 op ws2 e2) =
   validateWhitespace e (op, renderBinOp) ws2 (e2, renderExpr) <*>
   validateExprSyntax e2
 
+validateBlockSyntax
+  :: ( AsSyntaxError e v a
+     , Member Indentation v
+     )
+  => Block v a
+  -> Validate [e] (Block (Nub (Syntax ': v)) a)
+validateBlockSyntax (Block []) = pure $ Block []
+validateBlockSyntax (Block [b]) = Block . pure <$> traverseOf _3 validateStatementSyntax b
+validateBlockSyntax (Block (b:bs)) =
+  fmap Block $
+  (:) <$>
+  (case b ^. _4 of
+     Nothing -> Failure [_ExpectedNewlineAfter # b]
+     Just{} -> traverseOf _3 validateStatementSyntax b) <*>
+  (fmap unBlock . validateBlockSyntax $ Block bs)
+
 validateStatementSyntax
   :: ( AsSyntaxError e v a
      , Member Indentation v
      )
   => Statement v a
   -> Validate [e] (Statement (Nub (Syntax ': v)) a)
-validateStatementSyntax (Fundef a name params body) =
-  Fundef a name <$>
+validateStatementSyntax (Fundef a ws1 name ws2 params ws3 ws4 nl body) =
+  Fundef a ws1 name ws2 <$>
   validateParamsSyntax params <*>
-  traverseOf (_Wrapped.traverse._3) validateStatementSyntax body
+  pure ws3 <*>
+  pure ws4 <*>
+  pure nl <*>
+  validateBlockSyntax body
 validateStatementSyntax (Return a expr) =
   Return a <$>
   validateExprSyntax expr
@@ -147,7 +166,7 @@ validateStatementSyntax (Expr a expr) =
 validateStatementSyntax (If a expr body) =
   If a <$>
   validateExprSyntax expr <*>
-  traverseOf (_Wrapped.traverse._3) validateStatementSyntax body
+  validateBlockSyntax body
 validateStatementSyntax (Assign a lvalue rvalue) =
   Assign a <$>
   (if canAssignTo lvalue

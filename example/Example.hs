@@ -1,5 +1,5 @@
 {-# language DataKinds #-}
-{-# language OverloadedStrings #-}
+{-# language OverloadedStrings, OverloadedLists #-}
 module Example where
 
 import Control.Lens
@@ -16,13 +16,18 @@ def append_to(element, to=[]):
 -}
 append_to a =
   Fundef a
+    [Space]
     "append_to"
+    []
     [ PositionalParam a "element"
     , KeywordParam a "to" (List a [] CommaSepNone [])
     ]
+    []
+    []
+    LF
     (Block
-     [ (a, replicate 4 Space, Expr a $ Call a (Deref a (Ident a "to") [] [] "append") [] (PositionalArg a (Ident a "element") $ NoArgs a))
-     , (a, replicate 4 Space, Return a (Ident a "to"))
+     [ (a, replicate 4 Space, Expr a $ Call a (Deref a (Ident a "to") [] [] "append") [] (PositionalArg a (Ident a "element") $ NoArgs a), Just LF)
+     , (a, replicate 4 Space, Return a (Ident a "to"), Just LF)
      ])
 
 {-
@@ -55,13 +60,18 @@ append_to' =
 
 append_to'' a =
   Fundef a
+    [Space]
     "append_to"
+    []
     [ PositionalParam a "element"
     , KeywordParam a "to" (List a [] CommaSepNone [])
     ]
+    []
+    []
+    LF
     (Block
-     [ (a, replicate 4 Space, Expr a $ Call a (Deref a (Ident a "to") [] [] "append") [] (PositionalArg a (Ident a "element") $ NoArgs a))
-     , (a, replicate 4 Space ++ [Continued [Space, Space]], Return a (Ident a "to"))
+     [ (a, replicate 4 Space, Expr a $ Call a (Deref a (Ident a "to") [] [] "append") [] (PositionalArg a (Ident a "element") $ NoArgs a), Just LF)
+     , (a, replicate 4 Space ++ [Continued [Space, Space]], Return a (Ident a "to"), Just LF)
      ])
 
 bracketing =
@@ -83,7 +93,7 @@ bracketing =
 -- | Fix mutable default arguments
 fixMDA :: Statement '[] () -> Maybe (Statement '[] ())
 fixMDA input = do
-  (_, name, params, body) <- input ^? _Fundef
+  (_, _, name, _, params, _, _, _, body) <- input ^? _Fundef
   targetParam <- params ^? folded._KeywordParam.filtered (isMutable._kpExpr)
 
   let

@@ -39,18 +39,18 @@ validateBlockIndentation a =
   go Nothing (view _Wrapped a)
   where
     go _ [] = pure []
-    go a ((ann, ws, st):xs)
+    go a ((ann, ws, st, nl):xs)
       | null ws = Failure [_ExpectedIndent # ann] <*> go a xs
       | otherwise =
           case a of
             Nothing ->
               liftA2 (:)
-                ((,,) ann ws <$> validateStatementIndentation st)
+                ((,,,) ann ws <$> validateStatementIndentation st <*> pure nl)
                 (go (Just ws) xs)
             Just ws'
               | equivalentIndentation ws ws' ->
                   liftA2 (:)
-                    ((,,) ann ws <$> validateStatementIndentation st)
+                    ((,,,) ann ws <$> validateStatementIndentation st <*> pure nl)
                     (go a xs)
               | otherwise -> Failure [_WrongIndent # (ws', ws, ann)] <*> go a xs
 
@@ -76,9 +76,12 @@ validateStatementIndentation
   :: AsIndentationError e v a
   => Statement v a
   -> Validate [e] (Statement (Nub (Indentation ': v)) a)
-validateStatementIndentation (Fundef a name params body) =
-  Fundef a name <$>
+validateStatementIndentation (Fundef a ws1 name ws2 params ws3 ws4 nl body) =
+  Fundef a ws1 name ws2 <$>
   validateParamsIndentation params <*>
+  pure ws3 <*>
+  pure ws4 <*>
+  pure nl <*>
   validateBlockIndentation body
 validateStatementIndentation (If a expr body) =
   If a <$>

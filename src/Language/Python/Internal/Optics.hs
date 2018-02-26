@@ -4,6 +4,7 @@ module Language.Python.Internal.Optics where
 
 import Control.Lens
 import Data.Coerce
+import Data.List.NonEmpty
 import Language.Python.Internal.Syntax
 
 data KeywordParam v a
@@ -31,12 +32,22 @@ _Fundef
   :: Prism
        (Statement v a)
        (Statement '[] a)
-       (a, String, Params v a, Block v a)
-       (a, String, Params '[] a, Block '[] a)
+       ( a
+       , NonEmpty Whitespace, String
+       , [Whitespace], Params v a
+       , [Whitespace], [Whitespace], Newline
+       , Block v a
+       )
+       ( a
+       , NonEmpty Whitespace, String
+       , [Whitespace], Params '[] a
+       , [Whitespace], [Whitespace], Newline
+       , Block '[] a
+       )
 _Fundef =
   prism
-    (\(a, b, c, d) -> Fundef a b c d)
-    (\case; (coerce -> Fundef a b c d) -> Right (a, b, c, d); (coerce -> a) -> Left a)
+    (\(a, b, c, d, e, f, g, h, i) -> Fundef a b c d e f g h i)
+    (\case; (coerce -> Fundef a b c d e f g h i) -> Right (a, b, c, d, e, f, g, h, i); (coerce -> a) -> Left a)
 
 _Indents
   :: Traversal'

@@ -1,5 +1,6 @@
 {-# language DataKinds #-}
 {-# language MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances #-}
+{-# language OverloadedLists #-}
 module Language.Python.Syntax where
 
 import Data.String
@@ -17,9 +18,14 @@ instance HasKeyword (Param '[] ()) where; k_ = KeywordParam ()
 def_ :: String -> [Param '[] ()] -> [Statement '[] ()] -> Statement '[] ()
 def_ name params block =
   Fundef ()
+    [Space]
     name
+    []
     params
-    (Block $ (,,) () [Space, Space, Space, Space] <$> block)
+    []
+    []
+    LF
+    (Block $ (\a -> (,,,) () [Space, Space, Space, Space] a $ Just LF) <$> block)
 
 data Arg = AP (Expr '[] ()) | AK String (Expr '[] ())
 instance HasPositional Arg (Expr '[] ()) where; p_ = AP
@@ -108,7 +114,7 @@ neg :: Expr '[] () -> Expr '[] ()
 neg = negate
 
 if_ :: Expr '[] () -> [Statement '[] ()] -> Statement '[] ()
-if_ e sts = If () e (Block $ (,,) () [Space, Space, Space, Space] <$> sts)
+if_ e sts = If () e (Block $ (\a -> (,,,) () [Space, Space, Space, Space] a $ Just LF) <$> sts)
 
 var_ :: String -> Expr '[] ()
 var_ = Ident ()
