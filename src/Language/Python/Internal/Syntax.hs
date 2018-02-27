@@ -31,7 +31,7 @@ data Param (v :: [*]) a
   deriving (Eq, Show)
 instance HasExprs Param where
   _Exprs f (KeywordParam a name expr) = KeywordParam a name <$> f expr
-  _Exprs _ p = pure $ coerce p
+  _Exprs _ p@PositionalParam{} = pure $ coerce p
 
 type Args (v :: [*]) a = [Arg v a]
 data Arg (v :: [*]) a
@@ -60,17 +60,17 @@ class HasBlocks s where
 instance HasBlocks Statement where
   _Blocks f (Fundef a ws1 name ws2 params ws3 ws4 nl b) =
     Fundef a ws1 name ws2 (coerce params) ws3 ws4 nl <$> coerce (f b)
-  _Blocks _ (Return a ws expr) = pure $ Return a ws (coerce expr)
-  _Blocks _ (Expr a expr) = pure $ Expr a (coerce expr)
   _Blocks f (If a ws1 e1 ws2 ws3 nl b b') =
     If a ws1 (coerce e1) ws2 ws3 nl <$>
     coerce (f b) <*>
     traverseOf (traverse._4) (coerce . f) b'
   _Blocks f (While a ws1 e1 ws2 ws3 nl b) =
     While a ws1 (coerce e1) ws2 ws3 nl <$> coerce (f b)
-  _Blocks _ (Assign a e1 e2) = pure $ Assign a (coerce e1) (coerce e2)
-  _Blocks _ (Pass a) = pure $ Pass a
-  _Blocks _ (Break a) = pure $ Break a
+  _Blocks _ s@Assign{} = pure $ coerce s
+  _Blocks _ s@Expr{} = pure $ coerce s
+  _Blocks _ s@Return{} = pure $ coerce s
+  _Blocks _ s@Pass{} = pure $ coerce s
+  _Blocks _ s@Break{} = pure $ coerce s
 
 data Newline = CR | LF | CRLF deriving (Eq, Show)
 
@@ -102,7 +102,12 @@ instance Plated (Statement v a) where
     If a ws1 b ws2 ws3 nl <$>
     (_Wrapped.traverse._3) f sts <*>
     (traverse._4._Wrapped.traverse._3) f sts'
-  plate _ p = pure p
+  plate _ s@Return{} = pure $ coerce s
+  plate _ s@Expr{} = pure $ coerce s
+  plate _ s@Assign{} = pure $ coerce s
+  plate f (While a ws1 b ws2 ws3 nl sts) = While a ws1 b ws2 ws3 nl <$> (_Wrapped.traverse._3) f sts
+  plate _ s@Break{} = pure $ coerce s
+  plate _ s@Pass{} = pure $ coerce s
 
 data CommaSep a
   = CommaSepNone
@@ -139,18 +144,18 @@ instance Num (Expr '[] ()) where
   abs = undefined
 instance Plated (Expr '[] ()) where
   plate f (Parens a ws1 e ws2) = Parens a ws1 <$> f e <*> pure ws2
-  plate _ (Bool a b) = pure $ Bool a b
   plate f (List a ws1 exprs ws2) = List a ws1 <$> traverse f exprs <*> pure ws2
   plate f (Deref a expr ws1 ws2 name) =
     Deref a <$> f expr <*> pure ws1 <*> pure ws2 <*> pure name
   plate f (Call a expr ws args) = Call a <$> f expr <*> pure ws <*> (traverse._Exprs) f args
-  plate _ (String a b) = pure $ String a b
-  plate _ (None a) = pure $ None a
   plate f (BinOp a e1 ws1 op ws2 e2) =
     (\e1' e2' -> BinOp a e1' ws1 op ws2 e2') <$> f e1 <*> f e2
-  plate _ (Ident a name) = pure $ Ident a name
-  plate _ (Int a n) = pure $ Int a n
   plate f (Negate a ws expr) = Negate a ws <$> f expr
+  plate _ e@String{} = pure $ coerce e
+  plate _ e@None{} = pure $ coerce e
+  plate _ e@Bool{} = pure $ coerce e
+  plate _ e@Ident{} = pure $ coerce e
+  plate _ e@Int{} = pure $ coerce e
 
 data BinOp a
   = Is a
