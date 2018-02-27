@@ -48,6 +48,10 @@ is_ :: Expr '[] () -> Expr '[] () -> Expr '[] ()
 is_ = BinOp () (Is ())
 infixl 1 `is_`
 
+(.==) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
+(.==) = BinOp () (Equals ())
+infixl 1 .==
+
 (.|) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
 (.|) = undefined
 infixl 2 .|
@@ -108,7 +112,16 @@ neg :: Expr '[] () -> Expr '[] ()
 neg = Negate ()
 
 if_ :: Expr '[] () -> [Statement '[] ()] -> Statement '[] ()
-if_ e sts = If () e (Block $ (,,) () [Space, Space, Space, Space] <$> sts)
+if_ e sts = If () e (Block $ (,,) () [Space, Space, Space, Space] <$> sts) Nothing
+
+while_ :: Expr '[] () -> [Statement '[] ()] -> Statement '[] ()
+while_ e sts = While () e (Block $ (,,) () [Space, Space, Space, Space] <$> sts)
+
+ifElse_ :: Expr '[] () -> [Statement '[] ()] -> [Statement '[] ()] -> Statement '[] ()
+ifElse_ e sts sts' =
+  If () e
+    (Block $ (,,) () [Space, Space, Space, Space] <$> sts)
+    (Just . Block $ (,,) () [Space, Space, Space, Space] <$> sts')
 
 var_ :: String -> Expr '[] ()
 var_ = Ident ()
@@ -118,6 +131,9 @@ none_ = None ()
 
 pass_ :: Statement '[] ()
 pass_ = Pass ()
+
+break_ :: Statement '[] ()
+break_ = Break ()
 
 true_ :: Expr '[] ()
 true_ = Bool () True
@@ -130,6 +146,9 @@ and_ = BinOp () (BoolAnd ())
 
 or_ :: Expr '[] () -> Expr '[] () -> Expr '[] ()
 or_ = BinOp () (BoolOr ())
+
+str_ :: String -> Expr '[] ()
+str_ = String ()
 
 (.=) :: Expr '[] () -> Expr '[] () -> Statement '[] ()
 (.=) = Assign ()

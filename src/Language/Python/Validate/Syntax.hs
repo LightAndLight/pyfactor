@@ -26,6 +26,7 @@ validateExprSyntax
   -> Validate [e] (Expr (Nub (Syntax ': v)) a)
 validateExprSyntax (Parens a e) = Parens a <$> validateExprSyntax e
 validateExprSyntax (Bool a b) = pure $ Bool a b
+validateExprSyntax (String a b) = pure $ String a b
 validateExprSyntax (Negate a expr) = Negate a <$> validateExprSyntax expr
 validateExprSyntax (Int a n) = pure $ Int a n
 validateExprSyntax (Ident a name) = pure $ Ident a name
@@ -60,8 +61,13 @@ validateStatementSyntax (Return a expr) =
 validateStatementSyntax (Expr a expr) =
   Expr a <$>
   validateExprSyntax expr
-validateStatementSyntax (If a expr body) =
+validateStatementSyntax (If a expr body body') =
   If a <$>
+  validateExprSyntax expr <*>
+  traverseOf (_Wrapped.traverse._3) validateStatementSyntax body <*>
+  traverseOf (traverse._Wrapped.traverse._3) validateStatementSyntax body'
+validateStatementSyntax (While a expr body) =
+  While a <$>
   validateExprSyntax expr <*>
   traverseOf (_Wrapped.traverse._3) validateStatementSyntax body
 validateStatementSyntax (Assign a lvalue rvalue) =
@@ -71,6 +77,7 @@ validateStatementSyntax (Assign a lvalue rvalue) =
    else Failure [_CannotAssignTo # (a, lvalue)]) <*>
   validateExprSyntax rvalue
 validateStatementSyntax p@Pass{} = pure $ coerce p
+validateStatementSyntax p@Break{} = pure $ coerce p
 
 canAssignTo :: Expr v a -> Bool
 canAssignTo None{} = False

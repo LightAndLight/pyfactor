@@ -80,8 +80,9 @@ validateStatementIndentation (Fundef a name params body) =
   Fundef a name <$>
   validateParamsIndentation params <*>
   validateBlockIndentation body
-validateStatementIndentation (If a expr body) =
+validateStatementIndentation (If a expr body body') =
   If a <$>
   validateExprIndentation expr <*>
-  validateBlockIndentation body
+  validateBlockIndentation body <*>
+  traverse validateBlockIndentation body'
 validateStatementIndentation p = pure $ coerce p

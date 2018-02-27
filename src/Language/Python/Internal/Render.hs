@@ -18,6 +18,7 @@ renderWhitespace (Continued ws) = "\\\n" <> foldMap renderWhitespace ws
 renderExpr :: Expr v a -> String
 renderExpr (Parens _ e) = "(" <> renderExpr e <> ")"
 renderExpr (Bool _ b) = show b
+renderExpr (String _ b) = show b
 renderExpr (Negate _ expr) =
   "-" <> case expr of
            BinOp _ Exp{} _ _ -> renderExpr expr
@@ -82,11 +83,23 @@ renderStatement (Fundef _ name params body) =
   (view _Wrapped body >>= \(_, a, b) -> (foldMap renderWhitespace a <>) <$> renderStatement b)
 renderStatement (Return _ expr) = ["return " <> renderExpr expr]
 renderStatement (Expr _ expr) = [renderExpr expr]
-renderStatement (If _ expr body) =
+renderStatement (If _ expr body body') =
   ("if " <> renderExpr expr <> ":") :
-  (view _Wrapped body >>= \(_, a, b) -> (foldMap renderWhitespace a <>) <$> renderStatement b)
+  (view _Wrapped body >>=
+   \(_, a, b) -> (foldMap renderWhitespace a <>) <$> renderStatement b) <>
+  foldMap
+    (\body'' ->
+       ["else:"] <>
+       (view _Wrapped body'' >>=
+          \(_, a, b) -> (foldMap renderWhitespace a <>) <$> renderStatement b))
+    body'
+renderStatement (While _ expr body) =
+  ("while " <> renderExpr expr <> ":") :
+  (view _Wrapped body >>=
+   \(_, a, b) -> (foldMap renderWhitespace a <>) <$> renderStatement b)
 renderStatement (Assign _ lvalue rvalue) = [renderExpr lvalue <> " = " <> renderExpr rvalue]
 renderStatement (Pass _) = ["pass"]
+renderStatement (Break _) = ["break"]
 
 renderArgs :: Args v a -> String
 renderArgs a = "(" <> go a <> ")"
@@ -115,3 +128,4 @@ renderBinOp (Divide _) = "/"
 renderBinOp (Exp _) = "**"
 renderBinOp (BoolAnd _) = "and"
 renderBinOp (BoolOr _) = "or"
+renderBinOp (Equals _) = "=="
