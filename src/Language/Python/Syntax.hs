@@ -121,7 +121,10 @@ if_ e sts =
     Nothing
 
 while_ :: Expr '[] () -> [Statement '[] ()] -> Statement '[] ()
-while_ e sts = While () e (Block $ (\a -> (,,,) () [Space, Space, Space, Space] a $ Just LF) <$> sts)
+while_ e sts =
+  While () [Space] e
+    [] [] LF
+    (Block $ (\a -> (,,,) () [Space, Space, Space, Space] a $ Just LF) <$> sts)
 
 ifElse_ :: Expr '[] () -> [Statement '[] ()] -> [Statement '[] ()] -> Statement '[] ()
 ifElse_ e sts sts' =

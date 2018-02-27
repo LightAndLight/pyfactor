@@ -179,10 +179,11 @@ renderStatement (If _ ws1 expr ws2 ws3 nl body body') =
              (\(_, a, b, nl) -> maybe id endWith nl $ (foldMap renderWhitespace a <>) <$> renderStatement b)
              (view _Wrapped body''))
         body'
-renderStatement (While _ expr body) =
+renderStatement (While _ ws1 expr ws2 ws3 nl body) =
   ManyLines
-    ("while " <> renderExpr expr <> ":")
-    LF
+    ("while" <> foldMap renderWhitespace ws1 <> renderExpr expr <>
+     foldMap renderWhitespace ws2 <> ":" <> foldMap renderWhitespace ws3)
+    nl
     (foldMap
        (\(_, a, b, nl) -> maybe id endWith nl $ (foldMap renderWhitespace a <>) <$> renderStatement b)
        (view _Wrapped body))

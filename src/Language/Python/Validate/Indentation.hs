@@ -91,4 +91,15 @@ validateStatementIndentation (If a ws1 expr ws2 ws3 nl body body') =
   pure nl <*>
   validateBlockIndentation body <*>
   traverseOf (traverse._4) validateBlockIndentation body'
-validateStatementIndentation p = pure $ coerce p
+validateStatementIndentation (While a ws1 expr ws2 ws3 nl body) =
+  While a ws1 <$>
+  validateExprIndentation expr <*>
+  pure ws2 <*>
+  pure ws3 <*>
+  pure nl <*>
+  validateBlockIndentation body
+validateStatementIndentation e@Return{} = pure $ coerce e
+validateStatementIndentation e@Expr{} = pure $ coerce e
+validateStatementIndentation e@Assign{} = pure $ coerce e
+validateStatementIndentation e@Pass{} = pure $ coerce e
+validateStatementIndentation e@Break{} = pure $ coerce e

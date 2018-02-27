@@ -185,9 +185,13 @@ validateStatementSyntax (If a ws1 expr ws2 ws3 nl body body') =
   pure nl <*>
   validateBlockSyntax body <*>
   traverseOf (traverse._4) validateBlockSyntax body'
-validateStatementSyntax (While a expr body) =
+validateStatementSyntax (While a ws1 expr ws2 ws3 nl body) =
   While a <$>
+  validateWhitespace a ("while", id) ws1 (expr, renderExpr) <*>
   validateExprSyntax expr <*>
+  pure ws2 <*>
+  pure ws3 <*>
+  pure nl <*>
   validateBlockSyntax body
 validateStatementSyntax (Assign a lvalue rvalue) =
   Assign a <$>

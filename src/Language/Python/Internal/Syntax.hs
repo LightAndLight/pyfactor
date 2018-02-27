@@ -66,7 +66,8 @@ instance HasBlocks Statement where
     If a ws1 (coerce e1) ws2 ws3 nl <$>
     coerce (f b) <*>
     traverseOf (traverse._4) (coerce . f) b'
-  _Blocks f (While a e1 b) = While a (coerce e1) <$> coerce (f b)
+  _Blocks f (While a ws1 e1 ws2 ws3 nl b) =
+    While a ws1 (coerce e1) ws2 ws3 nl <$> coerce (f b)
   _Blocks _ (Assign a e1 e2) = pure $ Assign a (coerce e1) (coerce e2)
   _Blocks _ (Pass a) = pure $ Pass a
   _Blocks _ (Break a) = pure $ Break a
@@ -86,7 +87,10 @@ data Statement (v :: [*]) a
       [Whitespace] [Whitespace] Newline
       (Block v a)
       (Maybe ([Whitespace], [Whitespace], Newline, Block v a))
-  | While a (Expr v a) (Block v a)
+  | While a
+      [Whitespace] (Expr v a)
+      [Whitespace] [Whitespace] Newline
+      (Block v a)
   | Assign a (Expr v a) (Expr v a)
   | Pass a
   | Break a
@@ -182,9 +186,12 @@ instance HasExprs Statement where
     pure nl <*>
     (_Wrapped.traverse._3._Exprs) f sts <*>
     (traverse._4._Wrapped.traverse._3._Exprs) f sts'
-  _Exprs f (While a e sts) =
-    While a <$>
+  _Exprs f (While a ws1 e ws2 ws3 nl sts) =
+    While a ws1 <$>
     f e <*>
+    pure ws2 <*>
+    pure ws3 <*>
+    pure nl <*>
     (_Wrapped.traverse._3._Exprs) f sts
   _Exprs f (Assign a e1 e2) = Assign a <$> f e1 <*> f e2
   _Exprs _ p@Pass{} = pure $ coerce p
