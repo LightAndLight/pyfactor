@@ -116,7 +116,7 @@ neg = negate
 
 if_ :: Expr '[] () -> [Statement '[] ()] -> Statement '[] ()
 if_ e sts =
-  If () e
+  If () [Space] e [] [] LF
     (Block $ (\a -> (,,,) () [Space, Space, Space, Space] a $ Just LF) <$> sts)
     Nothing
 
@@ -125,9 +125,9 @@ while_ e sts = While () e (Block $ (\a -> (,,,) () [Space, Space, Space, Space] 
 
 ifElse_ :: Expr '[] () -> [Statement '[] ()] -> [Statement '[] ()] -> Statement '[] ()
 ifElse_ e sts sts' =
-  If () e
+  If () [Space] e [] [] LF
     (Block $ (\a -> (,,,) () [Space, Space, Space, Space] a $ Just LF) <$> sts)
-    (Just . Block $ (\a -> (,,,) () [Space, Space, Space, Space] a $ Just LF) <$> sts')
+    (Just ([], [], LF, Block $ (\a -> (,,,) () [Space, Space, Space, Space] a $ Just LF) <$> sts'))
 
 var_ :: String -> Expr '[] ()
 var_ = Ident ()

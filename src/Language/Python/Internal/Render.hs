@@ -8,7 +8,6 @@ import Control.Lens.Getter
 import Control.Lens.Prism
 import Control.Lens.Wrapped
 import Data.Foldable
-import Data.Functor
 import Data.List
 import Data.Maybe
 import Data.Semigroup
@@ -155,20 +154,27 @@ renderStatement (Fundef _ ws1 name ws2 params ws3 ws4 nl body) =
 renderStatement (Return _ ws expr) =
   OneLine $ "return" <> foldMap renderWhitespace ws <> renderExpr expr
 renderStatement (Expr _ expr) = OneLine $ renderExpr expr
-renderStatement (If _ expr body body') =
+renderStatement (If _ ws1 expr ws2 ws3 nl body body') =
   ManyLines firstLine LF restLines <> fold elseLines
   where
-    firstLine = "if " <> renderExpr expr <> ":"
+    firstLine =
+      "if" <> foldMap renderWhitespace ws1 <>
+      renderExpr expr <> foldMap renderWhitespace ws2 <> ":" <>
+      foldMap renderWhitespace ws3 <> renderNewline nl
     restLines =
       foldMap
         (\(_, a, b, nl) -> maybe id endWith nl $ (foldMap renderWhitespace a <>) <$> renderStatement b)
         (view _Wrapped body)
     elseLines =
       ManyLines <$>
-      (body' $> "else:") <*>
-      pure LF <*>
       fmap
-        (\body'' ->
+        (\(ws4, ws5, _, _) ->
+           "else" <> foldMap renderWhitespace ws4 <> ":" <>
+           foldMap renderWhitespace ws4)
+        body' <*>
+      fmap (\(_, _, nl2, _) -> nl2) body' <*>
+      fmap
+        (\(_, _, _, body'') ->
            foldMap
              (\(_, a, b, nl) -> maybe id endWith nl $ (foldMap renderWhitespace a <>) <$> renderStatement b)
              (view _Wrapped body''))

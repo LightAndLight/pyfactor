@@ -3,7 +3,7 @@
 module Language.Python.Validate.Indentation where
 
 import Control.Applicative
-import Control.Lens ((#), _Wrapped, view, from)
+import Control.Lens ((#), _Wrapped, view, from, _4, traverseOf)
 import Data.Coerce
 import Data.Type.Set
 import Data.Validate
@@ -83,9 +83,12 @@ validateStatementIndentation (Fundef a ws1 name ws2 params ws3 ws4 nl body) =
   pure ws4 <*>
   pure nl <*>
   validateBlockIndentation body
-validateStatementIndentation (If a expr body body') =
-  If a <$>
+validateStatementIndentation (If a ws1 expr ws2 ws3 nl body body') =
+  If a ws1 <$>
   validateExprIndentation expr <*>
+  pure ws2 <*>
+  pure ws3 <*>
+  pure nl <*>
   validateBlockIndentation body <*>
-  traverse validateBlockIndentation body'
+  traverseOf (traverse._4) validateBlockIndentation body'
 validateStatementIndentation p = pure $ coerce p

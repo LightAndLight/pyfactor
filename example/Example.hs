@@ -169,9 +169,9 @@ optimize_tr st = do
       case st of
         Return _ _ e -> isTailCall name e
         Expr _ e -> isTailCall name e
-        If _ e sts sts' ->
+        If _ _ e _ _ _ sts sts' ->
           allOf _last (hasTC name) (sts ^.. _Statements) ||
-          allOf _last (hasTC name) (sts' ^.. _Just._Statements)
+          allOf _last (hasTC name) (sts' ^.. _Just._4._Statements)
         _ -> False
 
     renameIn :: [String] -> String -> Expr '[] () -> Expr '[] ()
@@ -194,7 +194,7 @@ optimize_tr st = do
     looped name params r@(Expr _ e)
       | isTailCall name e = [pass_]
       | otherwise = [r]
-    looped name params r@(If _ e sts sts')
+    looped name params r@(If _ _ e _ _ _ sts sts')
       | hasTC name r =
           case sts' of
             Nothing ->
@@ -202,7 +202,7 @@ optimize_tr st = do
                   ((toListOf _Statements sts ^?! _init) <>
                    looped name params (toListOf _Statements sts ^?! _last))
               ]
-            Just sts'' ->
+            Just (_, _, _, sts'') ->
               [ ifElse_ e
                   ((toListOf _Statements sts ^?! _init) <>
                    looped name params (toListOf _Statements sts ^?! _last))

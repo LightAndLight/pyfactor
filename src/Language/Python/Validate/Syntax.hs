@@ -176,11 +176,15 @@ validateStatementSyntax (Return a ws expr) =
 validateStatementSyntax (Expr a expr) =
   Expr a <$>
   validateExprSyntax expr
-validateStatementSyntax (If a expr body body') =
+validateStatementSyntax (If a ws1 expr ws2 ws3 nl body body') =
   If a <$>
+  validateWhitespace a ("if", id) ws1 (expr, renderExpr) <*>
   validateExprSyntax expr <*>
+  pure ws2 <*>
+  pure ws3 <*>
+  pure nl <*>
   validateBlockSyntax body <*>
-  traverse validateBlockSyntax body'
+  traverseOf (traverse._4) validateBlockSyntax body'
 validateStatementSyntax (While a expr body) =
   While a <$>
   validateExprSyntax expr <*>
