@@ -187,8 +187,10 @@ renderStatement (While _ ws1 expr ws2 ws3 nl body) =
     (foldMap
        (\(_, a, b, nl) -> maybe id endWith nl $ (foldMap renderWhitespace a <>) <$> renderStatement b)
        (view _Wrapped body))
-renderStatement (Assign _ lvalue rvalue) =
-  OneLine $ renderExpr lvalue <> " = " <> renderExpr rvalue
+renderStatement (Assign _ lvalue ws1 ws2 rvalue) =
+  OneLine $
+  renderExpr lvalue <> foldMap renderWhitespace ws1 <> "=" <>
+  foldMap renderWhitespace ws2 <> renderExpr rvalue
 renderStatement (Pass _) = OneLine "pass"
 renderStatement (Break _) = OneLine "break"
 

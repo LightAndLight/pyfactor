@@ -91,7 +91,7 @@ data Statement (v :: [*]) a
       [Whitespace] (Expr v a)
       [Whitespace] [Whitespace] Newline
       (Block v a)
-  | Assign a (Expr v a) (Expr v a)
+  | Assign a (Expr v a) [Whitespace] [Whitespace] (Expr v a)
   | Pass a
   | Break a
   deriving (Eq, Show)
@@ -198,7 +198,7 @@ instance HasExprs Statement where
     pure ws3 <*>
     pure nl <*>
     (_Wrapped.traverse._3._Exprs) f sts
-  _Exprs f (Assign a e1 e2) = Assign a <$> f e1 <*> f e2
+  _Exprs f (Assign a e1 ws1 ws2 e2) = Assign a <$> f e1 <*> pure ws1 <*> pure ws2 <*> f e2
   _Exprs _ p@Pass{} = pure $ coerce p
   _Exprs _ p@Break{} = pure $ coerce p
 

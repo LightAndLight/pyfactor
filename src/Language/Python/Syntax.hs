@@ -160,4 +160,4 @@ str_ :: String -> Expr '[] ()
 str_ = String ()
 
 (.=) :: Expr '[] () -> Expr '[] () -> Statement '[] ()
-(.=) = Assign ()
+(.=) a = Assign () a [Space] [Space]

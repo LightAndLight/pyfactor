@@ -193,11 +193,13 @@ validateStatementSyntax (While a ws1 expr ws2 ws3 nl body) =
   pure ws3 <*>
   pure nl <*>
   validateBlockSyntax body
-validateStatementSyntax (Assign a lvalue rvalue) =
+validateStatementSyntax (Assign a lvalue ws1 ws2 rvalue) =
   Assign a <$>
   (if canAssignTo lvalue
    then validateExprSyntax lvalue
    else Failure [_CannotAssignTo # (a, lvalue)]) <*>
+  pure ws1 <*>
+  pure ws2 <*>
   validateExprSyntax rvalue
 validateStatementSyntax p@Pass{} = pure $ coerce p
 validateStatementSyntax p@Break{} = pure $ coerce p
