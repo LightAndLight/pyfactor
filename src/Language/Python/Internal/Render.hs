@@ -7,6 +7,8 @@ import Control.Lens.Fold
 import Control.Lens.Getter
 import Control.Lens.Prism
 import Control.Lens.Wrapped
+import Data.Foldable
+import Data.Functor
 import Data.List
 import Data.Maybe
 import Data.Semigroup
@@ -77,6 +79,7 @@ renderExpr (Negate _ ws expr) =
       BinOp _ _ _ Exp{} _ _ -> renderExpr expr
       BinOp{} -> "(" <> renderExpr expr <> ")"
       _ -> renderExpr expr
+renderExpr (String _ b) = show b
 renderExpr (Int _ n) = show n
 renderExpr (Ident _ name) = name
 renderExpr (List _ ws1 exprs ws2) =
@@ -152,16 +155,35 @@ renderStatement (Fundef _ ws1 name ws2 params ws3 ws4 nl body) =
 renderStatement (Return _ ws expr) =
   OneLine $ "return" <> foldMap renderWhitespace ws <> renderExpr expr
 renderStatement (Expr _ expr) = OneLine $ renderExpr expr
-renderStatement (If _ expr body) = ManyLines firstLine LF restLines
+renderStatement (If _ expr body body') =
+  ManyLines firstLine LF restLines <> fold elseLines
   where
     firstLine = "if " <> renderExpr expr <> ":"
     restLines =
       foldMap
         (\(_, a, b, nl) -> maybe id endWith nl $ (foldMap renderWhitespace a <>) <$> renderStatement b)
         (view _Wrapped body)
+    elseLines =
+      ManyLines <$>
+      (body' $> "else:") <*>
+      pure LF <*>
+      fmap
+        (\body'' ->
+           foldMap
+             (\(_, a, b, nl) -> maybe id endWith nl $ (foldMap renderWhitespace a <>) <$> renderStatement b)
+             (view _Wrapped body''))
+        body'
+renderStatement (While _ expr body) =
+  ManyLines
+    ("while " <> renderExpr expr <> ":")
+    LF
+    (foldMap
+       (\(_, a, b, nl) -> maybe id endWith nl $ (foldMap renderWhitespace a <>) <$> renderStatement b)
+       (view _Wrapped body))
 renderStatement (Assign _ lvalue rvalue) =
   OneLine $ renderExpr lvalue <> " = " <> renderExpr rvalue
 renderStatement (Pass _) = OneLine "pass"
+renderStatement (Break _) = OneLine "break"
 
 renderArgs :: Args v a -> String
 renderArgs a = "(" <> go a <> ")"
@@ -190,3 +212,4 @@ renderBinOp (Divide _) = "/"
 renderBinOp (Exp _) = "**"
 renderBinOp (BoolAnd _) = "and"
 renderBinOp (BoolOr _) = "or"
+renderBinOp (Equals _) = "=="

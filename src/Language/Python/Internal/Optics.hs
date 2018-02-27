@@ -7,6 +7,18 @@ import Data.Coerce
 import Data.List.NonEmpty
 import Language.Python.Internal.Syntax
 
+class Validated s where
+  unvalidated :: Getter (s v a) (s '[] a)
+
+instance Validated Expr where
+  unvalidated = to coerce
+
+instance Validated Statement where
+  unvalidated = to coerce
+
+instance Validated Block where
+  unvalidated = to coerce
+
 data KeywordParam v a
   = MkKeywordParam
   { _kpAnn :: a
@@ -48,6 +60,28 @@ _Fundef =
   prism
     (\(a, b, c, d, e, f, g, h, i) -> Fundef a b c d e f g h i)
     (\case; (coerce -> Fundef a b c d e f g h i) -> Right (a, b, c, d, e, f, g, h, i); (coerce -> a) -> Left a)
+
+_Call
+  :: Prism
+       (Expr v a)
+       (Expr '[] a)
+       (a, Expr v a, [Whitespace], Args v a)
+       (a, Expr '[] a, [Whitespace], Args '[] a)
+_Call =
+  prism
+    (\(a, b, c, d) -> Call a b c d)
+    (\case; (coerce -> Call a b c d) -> Right (a, b, c, d); (coerce -> a) -> Left a)
+
+_Ident
+  :: Prism
+       (Expr v a)
+       (Expr '[] a)
+       (a, String)
+       (a, String)
+_Ident =
+  prism
+    (uncurry Ident)
+    (\case; (coerce -> Ident a b) -> Right (a, b); (coerce -> a) -> Left a)
 
 _Indents
   :: Traversal'

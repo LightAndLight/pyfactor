@@ -41,6 +41,7 @@ instance StartsWith (BinOp a) where
   startsWith Multiply{} = Just '*'
   startsWith Divide{} = Just '/'
   startsWith Plus{} = Just '+'
+  startsWith Equals{} = Just '='
 
 instance EndsWith (BinOp a) where
   endsWith Is{} = Just 's'
@@ -51,6 +52,7 @@ instance EndsWith (BinOp a) where
   endsWith Multiply{} = Just '*'
   endsWith Divide{} = Just '/'
   endsWith Plus{} = Just '+'
+  endsWith Equals{} = Just '='
 
 instance StartsWith (Expr v a) where
   startsWith List{} = Just '['
@@ -63,6 +65,7 @@ instance StartsWith (Expr v a) where
   startsWith (Ident _ s) = s ^? _head
   startsWith (Int _ i) = show i ^? _head
   startsWith (Bool _ b) = show b ^? _head
+  startsWith String{} = Just '"'
 
 instance EndsWith (Expr v a) where
   endsWith List{} = Just ']'
@@ -78,6 +81,7 @@ instance EndsWith (Expr v a) where
   endsWith (Ident _ s) = s ^? _last
   endsWith (Int _ i) = show i ^? _last
   endsWith (Bool _ b) = show b ^? _last
+  endsWith String{} = Just '"'
 
 instance StartsWith String where
   startsWith a = a ^? _head
@@ -111,6 +115,7 @@ validateExprSyntax
 validateExprSyntax (Parens a ws1 e ws2) = Parens a ws1 <$> validateExprSyntax e <*> pure ws2
 validateExprSyntax (Bool a b) = pure $ Bool a b
 validateExprSyntax (Negate a ws expr) = Negate a ws <$> validateExprSyntax expr
+validateExprSyntax (String a b) = pure $ String a b
 validateExprSyntax (Int a n) = pure $ Int a n
 validateExprSyntax (Ident a name) = pure $ Ident a name
 validateExprSyntax (List a ws1 exprs ws2) =
@@ -171,8 +176,13 @@ validateStatementSyntax (Return a ws expr) =
 validateStatementSyntax (Expr a expr) =
   Expr a <$>
   validateExprSyntax expr
-validateStatementSyntax (If a expr body) =
+validateStatementSyntax (If a expr body body') =
   If a <$>
+  validateExprSyntax expr <*>
+  validateBlockSyntax body <*>
+  traverse validateBlockSyntax body'
+validateStatementSyntax (While a expr body) =
+  While a <$>
   validateExprSyntax expr <*>
   validateBlockSyntax body
 validateStatementSyntax (Assign a lvalue rvalue) =
@@ -182,6 +192,7 @@ validateStatementSyntax (Assign a lvalue rvalue) =
    else Failure [_CannotAssignTo # (a, lvalue)]) <*>
   validateExprSyntax rvalue
 validateStatementSyntax p@Pass{} = pure $ coerce p
+validateStatementSyntax p@Break{} = pure $ coerce p
 
 canAssignTo :: Expr v a -> Bool
 canAssignTo None{} = False

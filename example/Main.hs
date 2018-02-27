@@ -59,3 +59,27 @@ main = do
       case validateStatementSyntax a of
         Failure errs -> print (errs :: [SyntaxError '[Indentation] ()])
         Success a' -> putStrLn . renderLines $ renderStatement a'
+
+  let x = rewrite optimize_tr fact_tr
+  case validateStatementIndentation x of
+    Failure errs -> print (errs :: [IndentationError '[] ()])
+    Success a ->
+      case validateStatementSyntax a of
+        Failure errs -> print (errs :: [SyntaxError '[Indentation] ()])
+        Success a' -> putStrLn . renderLines $ renderStatement a'
+
+  let x = rewrite optimize_tr spin
+  case validateStatementIndentation x of
+    Failure errs -> print (errs :: [IndentationError '[] ()])
+    Success a ->
+      case validateStatementSyntax a of
+        Failure errs -> print (errs :: [SyntaxError '[Indentation] ()])
+        Success a' -> putStrLn . renderLines $ renderStatement a'
+
+  let x = rewrite optimize_tr yes
+  case validateStatementIndentation x of
+    Failure errs -> print (errs :: [IndentationError '[] ()])
+    Success a ->
+      case validateStatementSyntax a of
+        Failure errs -> print (errs :: [SyntaxError '[Indentation] ()])
+        Success a' -> putStrLn . renderLines $ renderStatement a'

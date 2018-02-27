@@ -54,6 +54,10 @@ is_ :: Expr '[] () -> Expr '[] () -> Expr '[] ()
 is_ a = BinOp () a [Space] (Is ()) [Space]
 infixl 1 `is_`
 
+(.==) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
+(.==) a = BinOp () a [Space] (Equals ()) [Space]
+infixl 1 .==
+
 (.|) :: Expr '[] () -> Expr '[] () -> Expr '[] ()
 (.|) = undefined
 infixl 2 .|
@@ -114,7 +118,19 @@ neg :: Expr '[] () -> Expr '[] ()
 neg = negate
 
 if_ :: Expr '[] () -> [Statement '[] ()] -> Statement '[] ()
-if_ e sts = If () e (Block $ (\a -> (,,,) () [Space, Space, Space, Space] a $ Just LF) <$> sts)
+if_ e sts =
+  If () e
+    (Block $ (\a -> (,,,) () [Space, Space, Space, Space] a $ Just LF) <$> sts)
+    Nothing
+
+while_ :: Expr '[] () -> [Statement '[] ()] -> Statement '[] ()
+while_ e sts = While () e (Block $ (\a -> (,,,) () [Space, Space, Space, Space] a $ Just LF) <$> sts)
+
+ifElse_ :: Expr '[] () -> [Statement '[] ()] -> [Statement '[] ()] -> Statement '[] ()
+ifElse_ e sts sts' =
+  If () e
+    (Block $ (\a -> (,,,) () [Space, Space, Space, Space] a $ Just LF) <$> sts)
+    (Just . Block $ (\a -> (,,,) () [Space, Space, Space, Space] a $ Just LF) <$> sts')
 
 var_ :: String -> Expr '[] ()
 var_ = Ident ()
@@ -124,6 +140,9 @@ none_ = None ()
 
 pass_ :: Statement '[] ()
 pass_ = Pass ()
+
+break_ :: Statement '[] ()
+break_ = Break ()
 
 true_ :: Expr '[] ()
 true_ = Bool () True
@@ -136,6 +155,9 @@ and_ a = BinOp () a [Space] (BoolAnd ()) [Space]
 
 or_ :: Expr '[] () -> Expr '[] () -> Expr '[] ()
 or_ a = BinOp () a [Space] (BoolOr ()) [Space]
+
+str_ :: String -> Expr '[] ()
+str_ = String ()
 
 (.=) :: Expr '[] () -> Expr '[] () -> Statement '[] ()
 (.=) = Assign ()

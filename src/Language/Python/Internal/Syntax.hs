@@ -18,8 +18,15 @@ import Data.String
 
 type Params v a = [Param v a]
 data Param (v :: [*]) a
-  = PositionalParam a String
-  | KeywordParam a String (Expr v a)
+  = PositionalParam
+  { _paramAnn :: a
+  , _paramName :: String
+  }
+  | KeywordParam
+  { _paramAnn :: a
+  , _paramName :: String
+  , _unsafeKeywordParamExpr :: Expr v a
+  }
   deriving (Eq, Show)
 
 data Args (v :: [*]) a
@@ -41,9 +48,11 @@ instance HasBlocks Statement where
     Fundef a ws1 name ws2 (coerce params) ws3 ws4 nl <$> coerce (f b)
   _Blocks _ (Return a ws expr) = pure $ Return a ws (coerce expr)
   _Blocks _ (Expr a expr) = pure $ Expr a (coerce expr)
-  _Blocks f (If a e1 b) = If a (coerce e1) <$> coerce (f b)
+  _Blocks f (If a e1 b b') = If a (coerce e1) <$> coerce (f b) <*> traverse (coerce . f) b'
+  _Blocks f (While a e1 b) = While a (coerce e1) <$> coerce (f b)
   _Blocks _ (Assign a e1 e2) = pure $ Assign a (coerce e1) (coerce e2)
   _Blocks _ (Pass a) = pure $ Pass a
+  _Blocks _ (Break a) = pure $ Break a
 
 data Newline = CR | LF | CRLF deriving (Eq, Show)
 
@@ -55,14 +64,17 @@ data Statement (v :: [*]) a
       (Block v a)
   | Return a [Whitespace] (Expr v a)
   | Expr a (Expr v a)
-  | If a (Expr v a) (Block v a)
+  | If a (Expr v a) (Block v a) (Maybe (Block v a))
+  | While a (Expr v a) (Block v a)
   | Assign a (Expr v a) (Expr v a)
   | Pass a
+  | Break a
   deriving (Eq, Show)
 instance Plated (Statement v a) where
   plate f (Fundef a ws1 b ws2 c ws3 ws4 nl sts) =
     Fundef a ws1 b ws2 c ws3 ws4 nl <$> (_Wrapped.traverse._3) f sts
-  plate f (If a b sts) = If a b <$> (_Wrapped.traverse._3) f sts
+  plate f (If a b sts sts') =
+    If a b <$> (_Wrapped.traverse._3) f sts <*> (traverse._Wrapped.traverse._3) f sts'
   plate _ p = pure p
 
 data CommaSep a
@@ -86,6 +98,7 @@ data Expr (v :: [*]) a
   | Ident a String
   | Int a Integer
   | Bool a Bool
+  | String a String
   deriving (Eq, Show)
 instance IsString (Expr '[] ()) where
   fromString = Ident ()
@@ -104,6 +117,7 @@ instance Plated (Expr '[] ()) where
   plate f (Deref a expr ws1 ws2 name) =
     Deref a <$> f expr <*> pure ws1 <*> pure ws2 <*> pure name
   plate f (Call a expr ws args) = Call a <$> f expr <*> pure ws <*> _Exprs f args
+  plate _ (String a b) = pure $ String a b
   plate _ (None a) = pure $ None a
   plate f (BinOp a e1 ws1 op ws2 e2) =
     (\e1' e2' -> BinOp a e1' ws1 op ws2 e2') <$> f e1 <*> f e2
@@ -120,6 +134,7 @@ data BinOp a
   | Multiply a
   | Divide a
   | Plus a
+  | Equals a
   deriving (Eq, Show, Functor)
 
 -- | 'Traversal' over all the expressions in a term
@@ -140,9 +155,18 @@ instance HasExprs Statement where
     (_Wrapped.traverse._3._Exprs) f sts
   _Exprs f (Return a ws e) = Return a ws <$> f e
   _Exprs f (Expr a e) = Expr a <$> f e
-  _Exprs f (If a e sts) = If a <$> f e <*> (_Wrapped.traverse._3._Exprs) f sts
+  _Exprs f (If a e sts sts') =
+    If a <$>
+    f e <*>
+    (_Wrapped.traverse._3._Exprs) f sts <*>
+    (traverse._Wrapped.traverse._3._Exprs) f sts'
+  _Exprs f (While a e sts) =
+    While a <$>
+    f e <*>
+    (_Wrapped.traverse._3._Exprs) f sts
   _Exprs f (Assign a e1 e2) = Assign a <$> f e1 <*> f e2
   _Exprs _ p@Pass{} = pure $ coerce p
+  _Exprs _ p@Break{} = pure $ coerce p
 
 -- | 'Traversal' over all the statements in a term
 class HasStatements s where
@@ -165,6 +189,7 @@ operatorTable =
   [ entry BoolOr 4 L
   , entry BoolAnd 5 L
   , entry Is 10 L
+  , entry Equals 10 L
   , entry Minus 20 L
   , entry Plus 20 L
   , entry Multiply 25 L
