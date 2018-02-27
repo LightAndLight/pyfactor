@@ -5,6 +5,7 @@
 module Language.Python.Internal.Syntax where
 
 import Control.Lens.Getter
+import Control.Lens.Lens
 import Control.Lens.TH
 import Control.Lens.Tuple
 import Control.Lens.Plated
@@ -27,14 +28,27 @@ data Param (v :: [*]) a
   , _unsafeKeywordParamExpr :: Expr v a
   }
   deriving (Eq, Show)
+instance HasExprs Param where
+  _Exprs f (KeywordParam a name expr) = KeywordParam a name <$> f expr
+  _Exprs _ p = pure $ coerce p
 
-data Args (v :: [*]) a
-  = NoArgs a
-  | PositionalArg a (Expr v a) (Args v a)
+type Args (v :: [*]) a = [Arg v a]
+data Arg (v :: [*]) a
+  = PositionalArg
+  { _argAnn :: a
+  , _argExpr :: Expr v a
+  }
+  | KeywordArg
+  { _argAnn :: a
+  , _unsafeKeywordArgName :: String
+  , _argExpr :: Expr v a
+  }
   deriving (Eq, Show)
-instance HasExprs Args where
-  _Exprs _ (NoArgs a) = pure $ NoArgs a
-  _Exprs f (PositionalArg a expr args) = PositionalArg a <$> f expr <*> _Exprs f args
+argExpr :: Lens (Arg v a) (Arg '[] a) (Expr v a) (Expr '[] a)
+argExpr = lens _argExpr (\s a -> s { _argExpr = a })
+instance HasExprs Arg where
+  _Exprs f (KeywordArg a name expr) = KeywordArg a name <$> f expr
+  _Exprs f (PositionalArg a expr) = PositionalArg a <$> f expr
 
 data Whitespace = Space | Tab | Continued [Whitespace] deriving (Eq, Show)
 
@@ -97,7 +111,7 @@ instance Plated (Expr '[] ()) where
   plate _ (String a b) = pure $ String a b
   plate f (List a exprs) = List a <$> traverse f exprs
   plate f (Deref a expr name) = Deref a <$> f expr <*> pure name
-  plate f (Call a expr args) = Call a <$> f expr <*> _Exprs f args
+  plate f (Call a expr args) = Call a <$> f expr <*> (traverse._Exprs) f args
   plate _ (None a) = pure $ None a
   plate f (BinOp a op e1 e2) = BinOp a op <$> f e1 <*> f e2
   plate _ (Ident a name) = pure $ Ident a name
@@ -119,10 +133,6 @@ data BinOp a
 -- | 'Traversal' over all the expressions in a term
 class HasExprs s where
   _Exprs :: Traversal (s v a) (s '[] a) (Expr v a) (Expr '[] a)
-
-instance HasExprs Param where
-  _Exprs f (KeywordParam a name expr) = KeywordParam a name <$> f expr
-  _Exprs _ p = pure $ coerce p
 
 instance HasExprs Statement where
   _Exprs f (Fundef a name params sts) =

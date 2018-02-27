@@ -88,11 +88,27 @@ validateArgsSyntax
      , Member Indentation v
      )
   => Args v a -> Validate [e] (Args (Nub (Syntax ': v)) a)
-validateArgsSyntax (NoArgs a) = pure $ NoArgs a
-validateArgsSyntax (PositionalArg a expr args) =
-  PositionalArg a <$>
-  validateExprSyntax expr <*>
-  validateArgsSyntax args
+validateArgsSyntax = go [] False
+  where
+    go :: (AsSyntaxError e v a, Member Indentation v)
+       => [String] -> Bool -> Args v a -> Validate [e] (Args (Nub (Syntax ': v)) a)
+    go _ _ [] = pure []
+    go names False (PositionalArg a expr : args) =
+      liftA2 (:)
+        (PositionalArg a <$> validateExprSyntax expr)
+        (go names False args)
+    go names True (PositionalArg a expr : args) =
+      let
+        errs = [_PositionalAfterKeywordArg # (a, expr)]
+      in
+        Failure errs <*> go names True args
+    go names _ (KeywordArg a name expr : args)
+      | name `elem` names =
+          Failure [_DuplicateArgument # (a, name)] <*> go names True args
+      | otherwise =
+          liftA2 (:)
+            (KeywordArg a name <$> validateExprSyntax expr)
+            (go (name:names) True args)
 
 validateParamsSyntax
   :: ( AsSyntaxError e v a
@@ -105,15 +121,18 @@ validateParamsSyntax = go [] False
     go names False (PositionalParam a name : params)
       | name `elem` names = 
           Failure [_DuplicateArgument # (a, name)] <*> go (name:names) False params
-      | otherwise = 
+      | otherwise =
           (PositionalParam a name :) <$> go (name:names) False params
     go names True (PositionalParam a name : params) =
       let errs =
             [_DuplicateArgument # (a, name) | name `elem` names] <>
-            [_PositionalAfterKeyword # (a, name)]
+            [_PositionalAfterKeywordParam # (a, name)]
       in
         Failure errs <*> go (name:names) True params
-    go names _ (KeywordParam a name expr : params) =
-      liftA2 (:)
-        (KeywordParam a name <$> validateExprSyntax expr)
-        (go (name:names) True params)
+    go names _ (KeywordParam a name expr : params)
+      | name `elem` names =
+          Failure [_DuplicateArgument # (a, name)] <*> go names True params
+      | otherwise =
+          liftA2 (:)
+            (KeywordParam a name <$> validateExprSyntax expr)
+            (go (name:names) True params)

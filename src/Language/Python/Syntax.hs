@@ -21,19 +21,16 @@ def_ name params block =
     params
     (Block $ (,,) () [Space, Space, Space, Space] <$> block)
 
-data Arg = AP (Expr '[] ()) | AK String (Expr '[] ())
-instance HasPositional Arg (Expr '[] ()) where; p_ = AP
-instance IsString Arg where fromString = AP . fromString
+data Argument = AP (Expr '[] ()) | AK String (Expr '[] ())
+instance HasPositional Argument (Expr '[] ()) where; p_ = AP
+instance IsString Argument where fromString = AP . fromString
 
-mkArgs :: [Arg] -> Args '[] ()
-mkArgs [] = NoArgs ()
-mkArgs (a:as) =
-  case a of
-    AP expr -> PositionalArg () expr $ mkArgs as
-    AK name expr -> undefined
+mkArg :: Argument -> Arg '[] ()
+mkArg (AP expr) = PositionalArg () expr
+mkArg (AK name expr) = KeywordArg () name expr
 
-call_ :: Expr '[] () -> [Arg] -> Expr '[] ()
-call_ expr args = Call () expr (mkArgs args)
+call_ :: Expr '[] () -> [Argument] -> Expr '[] ()
+call_ expr args = Call () expr (fmap mkArg args)
 
 return_ :: Expr '[] () -> Statement '[] ()
 return_ = Return ()
