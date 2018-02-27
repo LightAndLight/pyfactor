@@ -7,7 +7,8 @@ import Control.Lens.TH
 import Language.Python.Internal.Syntax
 
 data SyntaxError (v :: [*]) a
-  = PositionalAfterKeyword a String
+  = PositionalAfterKeywordArg a (Expr v a)
+  | PositionalAfterKeywordParam a String
   | CannotAssignTo a (Expr v a)
   | DuplicateArgument a String
   | MissingSpacesIn a String String

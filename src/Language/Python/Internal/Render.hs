@@ -186,16 +186,10 @@ renderStatement (Pass _) = OneLine "pass"
 renderStatement (Break _) = OneLine "break"
 
 renderArgs :: Args v a -> String
-renderArgs a = "(" <> go a <> ")"
+renderArgs a = "(" <> intercalate ", " (fmap go a) <> ")"
   where
-    go (NoArgs _) = ""
-    go (PositionalArg _ expr args) =
-      renderExpr expr <>
-      case args of
-        NoArgs _ -> ""
-        _ ->
-          ", " <>
-          go args
+    go (PositionalArg _ expr) = renderExpr expr
+    go (KeywordArg _ name expr) = name <> "=" <> renderExpr expr
 
 renderParams :: Params v a -> String
 renderParams a = "(" <> intercalate ", " (fmap go a) <> ")"

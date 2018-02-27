@@ -32,7 +32,7 @@ append_to a =
     []
     LF
     (Block
-     [ (a, replicate 4 Space, Expr a $ Call a (Deref a (Ident a "to") [] [] "append") [] (PositionalArg a (Ident a "element") $ NoArgs a), Just LF)
+     [ (a, replicate 4 Space, Expr a $ Call a (Deref a (Ident a "to") [] [] "append") [] [PositionalArg a (Ident a "element")], Just LF)
      , (a, replicate 4 Space, Return a [Space] (Ident a "to"), Just LF)
      ])
 
@@ -78,7 +78,7 @@ append_to'' a =
     []
     LF
     (Block
-     [ (a, replicate 4 Space, Expr a $ Call a (Deref a (Ident a "to") [] [] "append") [] (PositionalArg a (Ident a "element") $ NoArgs a), Just LF)
+     [ (a, replicate 4 Space, Expr a $ Call a (Deref a (Ident a "to") [] [] "append") [] [PositionalArg a (Ident a "element")], Just LF)
      , (a, replicate 4 Space ++ [Continued [Space, Space]], Return a [Space] (Ident a "to"), Just LF)
      ])
 
@@ -189,7 +189,7 @@ optimize_tr st = do
               zipWith
                 (\a b -> var_ (a <> "__tr") .= b)
                 params
-                (transformOn traverse (renameIn params "__tr__old") $ args ^.. _Exprs)
+                (transformOn traverse (renameIn params "__tr__old") $ args ^.. folded.argExpr)
         _ -> [ "__res__tr" .= e, break_ ]
     looped name params r@(Expr _ e)
       | isTailCall name e = [pass_]
