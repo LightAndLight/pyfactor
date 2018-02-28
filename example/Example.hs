@@ -1,6 +1,6 @@
 {-# language DataKinds #-}
+{-# language OverloadedStrings, OverloadedLists #-}
 {-# language FlexibleContexts #-}
-{-# language OverloadedStrings #-}
 module Example where
 
 import Control.Lens
@@ -9,6 +9,7 @@ import Control.Lens.Fold
 import Control.Lens.Plated
 import Control.Lens.Prism
 import Control.Lens.Tuple
+import Data.Foldable
 import Data.Semigroup
 import GHC.Natural
 import Language.Python.Internal.Optics
@@ -22,13 +23,25 @@ def append_to(element, to=[]):
 -}
 append_to a =
   Fundef a
+    [Space]
     "append_to"
-    [ PositionalParam a "element"
-    , KeywordParam a "to" (List a [])
-    ]
+    []
+    ( CommaSepMany (PositionalParam a "element") [] [] $
+      CommaSepOne (KeywordParam a "to" [] [] (List a [] CommaSepNone [])) Nothing
+    )
+    []
+    []
+    LF
     (Block
-     [ (a, replicate 4 Space, Expr a $ Call a (Deref a (Ident a "to") "append") [PositionalArg a (Ident a "element")])
-     , (a, replicate 4 Space, Return a (Ident a "to"))
+     [ ( a
+       , replicate 4 Space
+       , Expr a $
+         Call a
+           (Deref a (Ident a "to") [] [] "append") []
+           (CommaSepOne (PositionalArg a (Ident a "element")) Nothing)
+       , Just LF
+       )
+     , (a, replicate 4 Space, Return a [Space] (Ident a "to"), Just LF)
      ])
 
 {-
@@ -44,7 +57,7 @@ isMutable Deref{} = True
 isMutable Call{} = True
 isMutable BinOp{} = True
 isMutable Negate{} = True
-isMutable (Parens _ a) = isMutable a
+isMutable (Parens _ _ a _) = isMutable a
 isMutable Ident{} = True
 isMutable Int{} = False
 isMutable Bool{} = False
@@ -63,13 +76,24 @@ append_to' =
 
 append_to'' a =
   Fundef a
+    [Space]
     "append_to"
-    [ PositionalParam a "element"
-    , KeywordParam a "to" (List a [])
-    ]
+    []
+    ( CommaSepMany (PositionalParam a "element") [] [] $
+      CommaSepOne (KeywordParam a "to" [] [] (List a [] CommaSepNone [])) Nothing
+    )
+    []
+    []
+    LF
     (Block
-     [ (a, replicate 4 Space, Expr a $ Call a (Deref a (Ident a "to") "append") [PositionalArg a (Ident a "element")])
-     , (a, replicate 4 Space ++ [Continued [Space, Space]], Return a (Ident a "to"))
+     [ ( a
+       , replicate 4 Space
+       , Expr a $
+         Call a
+           (Deref a (Ident a "to") [] [] "append") []
+           (CommaSepOne (PositionalArg a (Ident a "element")) Nothing)
+       , Just LF)
+     , (a, replicate 4 Space ++ [Continued [Space, Space]], Return a [Space] (Ident a "to"), Just LF)
      ])
 
 bracketing =
@@ -91,14 +115,15 @@ bracketing =
 -- | Fix mutable default arguments
 fixMDA :: Statement '[] () -> Maybe (Statement '[] ())
 fixMDA input = do
-  (_, name, params, body) <- input ^? _Fundef
-  targetParam <- params ^? folded._KeywordParam.filtered (isMutable._kpExpr)
+  (_, _, name, _, params, _, _, _, body) <- input ^? _Fundef
+  let params' = toList params
+  targetParam <- params' ^? folded._KeywordParam.filtered (isMutable._kpExpr)
 
   let
     pname = targetParam ^. kpName
 
     newparams =
-      params & traverse._KeywordParam.filtered (isMutable._kpExpr).kpExpr .~ none_
+      params' & traverse._KeywordParam.filtered (isMutable._kpExpr).kpExpr .~ none_
 
     fixed =
       if_ (var_ pname `is_` none_) [ var_ pname .= list_ [] ]
@@ -131,14 +156,16 @@ yes =
   ]
 
 optimize_tr st = do
-  (_, name, params, body) <- st ^? _Fundef
+  (_, _, name, _, params, _, _, _, body) <- st ^? _Fundef
   bodyLast <- toListOf (unvalidated._Statements) body ^? _last
-  let paramNames = _paramName <$> params
+  let
+    params' = toList params
+    paramNames = _paramName <$> params'
   if not $ hasTC name bodyLast
     then Nothing
     else
       Just .
-      def_ name params $
+      def_ name params' $
         zipWith (\a b -> var_ (a <> "__tr") .= var_ b) paramNames paramNames <>
         [ "__res__tr" .= none_
         , while_ true_ .
@@ -157,11 +184,11 @@ optimize_tr st = do
     hasTC :: String -> Statement '[] () -> Bool
     hasTC name st =
       case st of
-        Return _ e -> isTailCall name e
+        Return _ _ e -> isTailCall name e
         Expr _ e -> isTailCall name e
-        If _ e sts sts' ->
+        If _ _ e _ _ _ sts sts' ->
           allOf _last (hasTC name) (sts ^.. _Statements) ||
-          allOf _last (hasTC name) (sts' ^.. _Just._Statements)
+          allOf _last (hasTC name) (sts' ^.. _Just._4._Statements)
         _ -> False
 
     renameIn :: [String] -> String -> Expr '[] () -> Expr '[] ()
@@ -170,9 +197,9 @@ optimize_tr st = do
         (_Ident._2 %~ (\a -> if a `elem` params then a <> suffix else a))
 
     looped :: String -> [String] -> Statement '[] () -> [Statement '[] ()]
-    looped name params r@(Return _ e) =
+    looped name params r@(Return _ _ e) =
       case e ^? _Call of
-        Just (_, f, args)
+        Just (_, f, _, args)
           | Just name' <- f ^? _Ident._2
           , name' == name ->
               fmap (\a -> var_ (a <> "__tr__old") .= (var_ $ a <> "__tr")) params <>
@@ -184,7 +211,7 @@ optimize_tr st = do
     looped name params r@(Expr _ e)
       | isTailCall name e = [pass_]
       | otherwise = [r]
-    looped name params r@(If _ e sts sts')
+    looped name params r@(If _ _ e _ _ _ sts sts')
       | hasTC name r =
           case sts' of
             Nothing ->
@@ -192,7 +219,7 @@ optimize_tr st = do
                   ((toListOf _Statements sts ^?! _init) <>
                    looped name params (toListOf _Statements sts ^?! _last))
               ]
-            Just sts'' ->
+            Just (_, _, _, sts'') ->
               [ ifElse_ e
                   ((toListOf _Statements sts ^?! _init) <>
                    looped name params (toListOf _Statements sts ^?! _last))

@@ -3,7 +3,7 @@
 module Language.Python.Validate.Indentation where
 
 import Control.Applicative
-import Control.Lens ((#), _Wrapped, view, from)
+import Control.Lens ((#), _Wrapped, view, from, _4, traverseOf)
 import Data.Coerce
 import Data.Type.Set
 import Data.Validate
@@ -39,18 +39,18 @@ validateBlockIndentation a =
   go Nothing (view _Wrapped a)
   where
     go _ [] = pure []
-    go a ((ann, ws, st):xs)
+    go a ((ann, ws, st, nl):xs)
       | null ws = Failure [_ExpectedIndent # ann] <*> go a xs
       | otherwise =
           case a of
             Nothing ->
               liftA2 (:)
-                ((,,) ann ws <$> validateStatementIndentation st)
+                ((,,,) ann ws <$> validateStatementIndentation st <*> pure nl)
                 (go (Just ws) xs)
             Just ws'
               | equivalentIndentation ws ws' ->
                   liftA2 (:)
-                    ((,,) ann ws <$> validateStatementIndentation st)
+                    ((,,,) ann ws <$> validateStatementIndentation st <*> pure nl)
                     (go a xs)
               | otherwise -> Failure [_WrongIndent # (ws', ws, ann)] <*> go a xs
 
@@ -62,27 +62,44 @@ validateExprIndentation e = pure $ coerce e
 
 validateParamsIndentation
   :: AsIndentationError e v a
-  => Params v a
-  -> Validate [e] (Params (Nub (Indentation ': v)) a)
+  => CommaSep (Param v a)
+  -> Validate [e] (CommaSep (Param (Nub (Indentation ': v)) a))
 validateParamsIndentation e = pure $ coerce e
 
 validateArgsIndentation
   :: AsIndentationError e v a
-  => Args v a
-  -> Validate [e] (Args (Nub (Indentation ': v)) a)
+  => CommaSep (Arg v a)
+  -> Validate [e] (CommaSep (Arg (Nub (Indentation ': v)) a))
 validateArgsIndentation e = pure $ coerce e
 
 validateStatementIndentation
   :: AsIndentationError e v a
   => Statement v a
   -> Validate [e] (Statement (Nub (Indentation ': v)) a)
-validateStatementIndentation (Fundef a name params body) =
-  Fundef a name <$>
+validateStatementIndentation (Fundef a ws1 name ws2 params ws3 ws4 nl body) =
+  Fundef a ws1 name ws2 <$>
   validateParamsIndentation params <*>
+  pure ws3 <*>
+  pure ws4 <*>
+  pure nl <*>
   validateBlockIndentation body
-validateStatementIndentation (If a expr body body') =
-  If a <$>
+validateStatementIndentation (If a ws1 expr ws2 ws3 nl body body') =
+  If a ws1 <$>
   validateExprIndentation expr <*>
+  pure ws2 <*>
+  pure ws3 <*>
+  pure nl <*>
   validateBlockIndentation body <*>
-  traverse validateBlockIndentation body'
-validateStatementIndentation p = pure $ coerce p
+  traverseOf (traverse._4) validateBlockIndentation body'
+validateStatementIndentation (While a ws1 expr ws2 ws3 nl body) =
+  While a ws1 <$>
+  validateExprIndentation expr <*>
+  pure ws2 <*>
+  pure ws3 <*>
+  pure nl <*>
+  validateBlockIndentation body
+validateStatementIndentation e@Return{} = pure $ coerce e
+validateStatementIndentation e@Expr{} = pure $ coerce e
+validateStatementIndentation e@Assign{} = pure $ coerce e
+validateStatementIndentation e@Pass{} = pure $ coerce e
+validateStatementIndentation e@Break{} = pure $ coerce e

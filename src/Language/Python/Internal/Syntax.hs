@@ -1,4 +1,4 @@
-{-# language DeriveFunctor #-}
+{-# language DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 {-# language DataKinds, PolyKinds #-}
 {-# language TemplateHaskell, TypeFamilies, FlexibleInstances,
   MultiParamTypeClasses #-}
@@ -13,10 +13,10 @@ import Control.Lens.Traversal
 import Control.Lens.Wrapped
 import Data.Coerce
 import Data.Functor
+import Data.List.NonEmpty
 import Data.Monoid
 import Data.String
 
-type Params v a = [Param v a]
 data Param (v :: [*]) a
   = PositionalParam
   { _paramAnn :: a
@@ -25,14 +25,16 @@ data Param (v :: [*]) a
   | KeywordParam
   { _paramAnn :: a
   , _paramName :: String
+  , _unsafeKeywordParamWhitespaceLeft :: [Whitespace]
+  , _unsafeKeywordParamWhitespaceRight :: [Whitespace]
   , _unsafeKeywordParamExpr :: Expr v a
   }
   deriving (Eq, Show)
 instance HasExprs Param where
-  _Exprs f (KeywordParam a name expr) = KeywordParam a name <$> f expr
-  _Exprs _ p = pure $ coerce p
+  _Exprs f (KeywordParam a name ws1 ws2 expr) =
+    KeywordParam a name <$> pure ws1 <*> pure ws2 <*> f expr
+  _Exprs _ p@PositionalParam{} = pure $ coerce p
 
-type Args (v :: [*]) a = [Arg v a]
 data Arg (v :: [*]) a
   = PositionalArg
   { _argAnn :: a
@@ -41,55 +43,95 @@ data Arg (v :: [*]) a
   | KeywordArg
   { _argAnn :: a
   , _unsafeKeywordArgName :: String
+  , _unsafeKeywordArgWhitespaceLeft :: [Whitespace]
+  , _unsafeKeywordArgWhitespaceRight :: [Whitespace]
   , _argExpr :: Expr v a
   }
   deriving (Eq, Show)
+instance IsString (Arg '[] ()) where fromString = PositionalArg () . fromString
 argExpr :: Lens (Arg v a) (Arg '[] a) (Expr v a) (Expr '[] a)
 argExpr = lens _argExpr (\s a -> s { _argExpr = a })
 instance HasExprs Arg where
-  _Exprs f (KeywordArg a name expr) = KeywordArg a name <$> f expr
+  _Exprs f (KeywordArg a name ws1 ws2 expr) = KeywordArg a name ws1 ws2 <$> f expr
   _Exprs f (PositionalArg a expr) = PositionalArg a <$> f expr
 
 data Whitespace = Space | Tab | Continued [Whitespace] deriving (Eq, Show)
 
-newtype Block v a = Block [(a, [Whitespace], Statement v a)]
+newtype Block v a = Block { unBlock :: [(a, [Whitespace], Statement v a, Maybe Newline)] }
   deriving (Eq, Show)
 class HasBlocks s where
   _Blocks :: Traversal (s v a) (s '[] a) (Block v a) (Block '[] a)
 instance HasBlocks Statement where
-  _Blocks f (Fundef a name params b) = Fundef a name (coerce params) <$> coerce (f b)
-  _Blocks _ (Return a expr) = pure $ Return a (coerce expr)
-  _Blocks _ (Expr a expr) = pure $ Expr a (coerce expr)
-  _Blocks f (If a e1 b b') = If a (coerce e1) <$> coerce (f b) <*> traverse (coerce . f) b'
-  _Blocks f (While a e1 b) = While a (coerce e1) <$> coerce (f b)
-  _Blocks _ (Assign a e1 e2) = pure $ Assign a (coerce e1) (coerce e2)
-  _Blocks _ (Pass a) = pure $ Pass a
-  _Blocks _ (Break a) = pure $ Break a
+  _Blocks f (Fundef a ws1 name ws2 params ws3 ws4 nl b) =
+    Fundef a ws1 name ws2 (coerce params) ws3 ws4 nl <$> coerce (f b)
+  _Blocks f (If a ws1 e1 ws2 ws3 nl b b') =
+    If a ws1 (coerce e1) ws2 ws3 nl <$>
+    coerce (f b) <*>
+    traverseOf (traverse._4) (coerce . f) b'
+  _Blocks f (While a ws1 e1 ws2 ws3 nl b) =
+    While a ws1 (coerce e1) ws2 ws3 nl <$> coerce (f b)
+  _Blocks _ s@Assign{} = pure $ coerce s
+  _Blocks _ s@Expr{} = pure $ coerce s
+  _Blocks _ s@Return{} = pure $ coerce s
+  _Blocks _ s@Pass{} = pure $ coerce s
+  _Blocks _ s@Break{} = pure $ coerce s
+
+data Newline = CR | LF | CRLF deriving (Eq, Show)
 
 data Statement (v :: [*]) a
-  = Fundef a String (Params v a) (Block v a)
-  | Return a (Expr v a)
+  = Fundef a
+      (NonEmpty Whitespace) String
+      [Whitespace] (CommaSep (Param v a))
+      [Whitespace] [Whitespace] Newline
+      (Block v a)
+  | Return a [Whitespace] (Expr v a)
   | Expr a (Expr v a)
-  | If a (Expr v a) (Block v a) (Maybe (Block v a))
-  | While a (Expr v a) (Block v a)
-  | Assign a (Expr v a) (Expr v a)
+  | If a
+      [Whitespace] (Expr v a)
+      [Whitespace] [Whitespace] Newline
+      (Block v a)
+      (Maybe ([Whitespace], [Whitespace], Newline, Block v a))
+  | While a
+      [Whitespace] (Expr v a)
+      [Whitespace] [Whitespace] Newline
+      (Block v a)
+  | Assign a (Expr v a) [Whitespace] [Whitespace] (Expr v a)
   | Pass a
   | Break a
   deriving (Eq, Show)
 instance Plated (Statement v a) where
-  plate f (Fundef a b c sts) = Fundef a b c <$> (_Wrapped.traverse._3) f sts
-  plate f (If a b sts sts') =
-    If a b <$> (_Wrapped.traverse._3) f sts <*> (traverse._Wrapped.traverse._3) f sts'
-  plate _ p = pure p
+  plate f (Fundef a ws1 b ws2 c ws3 ws4 nl sts) =
+    Fundef a ws1 b ws2 c ws3 ws4 nl <$> (_Wrapped.traverse._3) f sts
+  plate f (If a ws1 b ws2 ws3 nl sts sts') =
+    If a ws1 b ws2 ws3 nl <$>
+    (_Wrapped.traverse._3) f sts <*>
+    (traverse._4._Wrapped.traverse._3) f sts'
+  plate _ s@Return{} = pure $ coerce s
+  plate _ s@Expr{} = pure $ coerce s
+  plate _ s@Assign{} = pure $ coerce s
+  plate f (While a ws1 b ws2 ws3 nl sts) =
+    While a ws1 b ws2 ws3 nl <$> (_Wrapped.traverse._3) f sts
+  plate _ s@Break{} = pure $ coerce s
+  plate _ s@Pass{} = pure $ coerce s
+
+data CommaSep a
+  = CommaSepNone
+  | CommaSepOne a (Maybe [Whitespace])
+  | CommaSepMany a [Whitespace] [Whitespace] (CommaSep a)
+  deriving (Eq, Show, Functor, Foldable, Traversable)
+listToCommaSep :: [a] -> CommaSep a
+listToCommaSep [] = CommaSepNone
+listToCommaSep [a] = CommaSepOne a Nothing
+listToCommaSep (a:as) = CommaSepMany a [] [Space] $ listToCommaSep as
 
 data Expr (v :: [*]) a
-  = List a [Expr v a]
-  | Deref a (Expr v a) String
-  | Call a (Expr v a) (Args v a)
+  = List a [Whitespace] (CommaSep (Expr v a)) [Whitespace]
+  | Deref a (Expr v a) [Whitespace] [Whitespace] String
+  | Call a (Expr v a) [Whitespace] (CommaSep (Arg v a))
   | None a
-  | BinOp a (BinOp a) (Expr v a) (Expr v a)
-  | Negate a (Expr v a)
-  | Parens a (Expr v a)
+  | BinOp a (Expr v a) [Whitespace] (BinOp a) [Whitespace] (Expr v a)
+  | Negate a [Whitespace] (Expr v a)
+  | Parens a [Whitespace] (Expr v a) [Whitespace]
   | Ident a String
   | Int a Integer
   | Bool a Bool
@@ -99,24 +141,26 @@ instance IsString (Expr '[] ()) where
   fromString = Ident ()
 instance Num (Expr '[] ()) where
   fromInteger = Int ()
-  negate = Negate ()
-  (+) = BinOp () (Plus ())
-  (*) = BinOp () (Multiply ())
-  (-) = BinOp () (Minus ())
+  negate = Negate () []
+  (+) a = BinOp () a [Space] (Plus ()) [Space]
+  (*) a = BinOp () a [Space] (Multiply ()) [Space]
+  (-) a = BinOp () a [Space] (Minus ()) [Space]
   signum = undefined
   abs = undefined
 instance Plated (Expr '[] ()) where
-  plate f (Parens a e) = Parens a <$> f e
-  plate _ (Bool a b) = pure $ Bool a b
-  plate _ (String a b) = pure $ String a b
-  plate f (List a exprs) = List a <$> traverse f exprs
-  plate f (Deref a expr name) = Deref a <$> f expr <*> pure name
-  plate f (Call a expr args) = Call a <$> f expr <*> (traverse._Exprs) f args
-  plate _ (None a) = pure $ None a
-  plate f (BinOp a op e1 e2) = BinOp a op <$> f e1 <*> f e2
-  plate _ (Ident a name) = pure $ Ident a name
-  plate _ (Int a n) = pure $ Int a n
-  plate f (Negate a expr) = Negate a <$> f expr
+  plate f (Parens a ws1 e ws2) = Parens a ws1 <$> f e <*> pure ws2
+  plate f (List a ws1 exprs ws2) = List a ws1 <$> traverse f exprs <*> pure ws2
+  plate f (Deref a expr ws1 ws2 name) =
+    Deref a <$> f expr <*> pure ws1 <*> pure ws2 <*> pure name
+  plate f (Call a expr ws args) = Call a <$> f expr <*> pure ws <*> (traverse._Exprs) f args
+  plate f (BinOp a e1 ws1 op ws2 e2) =
+    (\e1' e2' -> BinOp a e1' ws1 op ws2 e2') <$> f e1 <*> f e2
+  plate f (Negate a ws expr) = Negate a ws <$> f expr
+  plate _ e@String{} = pure $ coerce e
+  plate _ e@None{} = pure $ coerce e
+  plate _ e@Bool{} = pure $ coerce e
+  plate _ e@Ident{} = pure $ coerce e
+  plate _ e@Int{} = pure $ coerce e
 
 data BinOp a
   = Is a
@@ -135,22 +179,31 @@ class HasExprs s where
   _Exprs :: Traversal (s v a) (s '[] a) (Expr v a) (Expr '[] a)
 
 instance HasExprs Statement where
-  _Exprs f (Fundef a name params sts) =
-    Fundef a name <$>
+  _Exprs f (Fundef a ws1 name ws2 params ws3 ws4 nl sts) =
+    Fundef a ws1 name ws2 <$>
     (traverse._Exprs) f params <*>
+    pure ws3 <*>
+    pure ws4 <*>
+    pure nl <*>
     (_Wrapped.traverse._3._Exprs) f sts
-  _Exprs f (Return a e) = Return a <$> f e
+  _Exprs f (Return a ws e) = Return a ws <$> f e
   _Exprs f (Expr a e) = Expr a <$> f e
-  _Exprs f (If a e sts sts') =
-    If a <$>
+  _Exprs f (If a ws1 e ws2 ws3 nl sts sts') =
+    If a ws1 <$>
     f e <*>
+    pure ws2 <*>
+    pure ws3 <*>
+    pure nl <*>
     (_Wrapped.traverse._3._Exprs) f sts <*>
-    (traverse._Wrapped.traverse._3._Exprs) f sts'
-  _Exprs f (While a e sts) =
-    While a <$>
+    (traverse._4._Wrapped.traverse._3._Exprs) f sts'
+  _Exprs f (While a ws1 e ws2 ws3 nl sts) =
+    While a ws1 <$>
     f e <*>
+    pure ws2 <*>
+    pure ws3 <*>
+    pure nl <*>
     (_Wrapped.traverse._3._Exprs) f sts
-  _Exprs f (Assign a e1 e2) = Assign a <$> f e1 <*> f e2
+  _Exprs f (Assign a e1 ws1 ws2 e2) = Assign a <$> f e1 <*> pure ws1 <*> pure ws2 <*> f e2
   _Exprs _ p@Pass{} = pure $ coerce p
   _Exprs _ p@Break{} = pure $ coerce p
 

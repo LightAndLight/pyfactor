@@ -1,3 +1,5 @@
+{-# language GeneralizedNewtypeDeriving, DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
+{-# language TemplateHaskell #-}
 module Language.Python.Internal.Render where
 
 import Control.Applicative
@@ -5,47 +7,106 @@ import Control.Lens.Fold
 import Control.Lens.Getter
 import Control.Lens.Prism
 import Control.Lens.Wrapped
-import Data.List
+import Data.Foldable
 import Data.Maybe
-import Data.Monoid
+import Data.Semigroup (Semigroup(..))
 import Language.Python.Internal.Syntax
+
+data Lines a
+  = NoLines
+  | OneLine a
+  | ManyLines a Newline (Lines a)
+  deriving (Eq, Show, Functor, Foldable, Traversable)
+listToLines :: Newline -> [a] -> Lines a
+listToLines _ [] = NoLines
+listToLines _ [a] = OneLine a
+listToLines nl (a:as) = ManyLines a nl $ listToLines nl as
+
+endWith :: Newline -> Lines a -> Lines a
+endWith nl NoLines = NoLines
+endWith nl (OneLine a) = ManyLines a nl NoLines
+endWith nl (ManyLines a nl' as) =
+  ManyLines
+    a
+    (case as of; NoLines -> nl; _ -> nl')
+    (case as of; NoLines -> NoLines; _ -> endWith nl as)
+
+renderLines :: Lines String -> String
+renderLines NoLines = ""
+renderLines (OneLine a) = a
+renderLines (ManyLines a nl ls) = a <> renderNewline nl <> renderLines ls
+
+instance Semigroup a => Semigroup (Lines a) where
+  NoLines <> a = a
+  OneLine a <> NoLines = OneLine a
+  OneLine a <> OneLine b = OneLine (a <> b)
+  OneLine a <> ManyLines b nl ls = ManyLines (a <> b) nl ls
+  ManyLines a nl ls <> b = ManyLines a nl (ls <> b)
+
+instance Semigroup a => Monoid (Lines a) where
+  mempty = NoLines
+  mappend = (<>)
 
 renderWhitespace :: Whitespace -> String
 renderWhitespace Space = " "
 renderWhitespace Tab = "\t"
 renderWhitespace (Continued ws) = "\\\n" <> foldMap renderWhitespace ws
 
+renderNewline :: Newline -> String
+renderNewline CR = "\r"
+renderNewline LF = "\n"
+renderNewline CRLF = "\r\n"
+
+renderCommaSep :: (a -> String) -> CommaSep a -> String
+renderCommaSep _ CommaSepNone = mempty
+renderCommaSep f (CommaSepOne a c) = f a <> foldMap ((<> ",") . foldMap renderWhitespace) c
+renderCommaSep f (CommaSepMany a ws1 ws2 c) =
+  f a <>
+  foldMap renderWhitespace ws1 <> "," <> foldMap renderWhitespace ws2 <>
+  renderCommaSep f c
+
 renderExpr :: Expr v a -> String
-renderExpr (Parens _ e) = "(" <> renderExpr e <> ")"
+renderExpr (Parens _ ws1 e ws2) =
+  "(" <> foldMap renderWhitespace ws1 <>
+  renderExpr e <>
+  foldMap renderWhitespace ws2 <> ")"
 renderExpr (Bool _ b) = show b
+renderExpr (Negate _ ws expr) =
+  "-" <> foldMap renderWhitespace ws <>
+    case expr of
+      BinOp _ _ _ Exp{} _ _ -> renderExpr expr
+      BinOp{} -> "(" <> renderExpr expr <> ")"
+      _ -> renderExpr expr
 renderExpr (String _ b) = show b
-renderExpr (Negate _ expr) =
-  "-" <> case expr of
-           BinOp _ Exp{} _ _ -> renderExpr expr
-           BinOp{} -> "(" <> renderExpr expr <> ")"
-           _ -> renderExpr expr
 renderExpr (Int _ n) = show n
 renderExpr (Ident _ name) = name
-renderExpr (List _ exprs) = "[" <> intercalate ", " (fmap renderExpr exprs) <> "]"
-renderExpr (Call _ expr args) = renderExpr expr <> renderArgs args
-renderExpr (Deref _ expr name) =
+renderExpr (List _ ws1 exprs ws2) =
+  "[" <> foldMap renderWhitespace ws1 <>
+  renderCommaSep renderExpr exprs <>
+  foldMap renderWhitespace ws2 <> "]"
+renderExpr (Call _ expr ws args) =
+  renderExpr expr <>
+  foldMap renderWhitespace ws <>
+  renderArgs args
+renderExpr (Deref _ expr ws1 ws2 name) =
   (case expr of
     Int{} -> "(" <> renderExpr expr <> ")"
     _ -> renderExpr expr) <>
-  "." <> name
+  foldMap renderWhitespace ws1 <> "." <> foldMap renderWhitespace ws2 <>
+  name
 renderExpr (None _) = "None"
-renderExpr (BinOp _ op e1 e2) =
+renderExpr (BinOp _ e1 ws1 op ws2 e2) =
   let
     entry = lookupOpEntry op operatorTable
 
     lEntry =
       case e1 of
-        BinOp _ lOp _ _ -> Just $ lookupOpEntry lOp operatorTable
+        BinOp _ _ _ lOp _ _ -> Just $ lookupOpEntry lOp operatorTable
         _ -> Nothing
 
     rEntry =
       case e2 of
-        BinOp _ rOp _ _ -> Just $ lookupOpEntry rOp operatorTable
+        BinOp _ _ _ rOp _ _ -> Just $ lookupOpEntry rOp operatorTable
         _ -> Nothing
 
     (e1f, e2f) =
@@ -70,48 +131,84 @@ renderExpr (BinOp _ op e1 e2) =
       else Nothing
   in
     fromMaybe id (e1f <|> e1f') (renderExpr e1) <>
-    " " <>
+    foldMap renderWhitespace ws1  <>
     renderBinOp op <>
-    " " <>
+    foldMap renderWhitespace ws2 <>
     fromMaybe id (e2f <|> e2f') (renderExpr e2)
   where
     bracket a = "(" <> a <> ")"
 
-renderStatement :: Statement v a -> [String]
-renderStatement (Fundef _ name params body) =
-  ("def " <> name <> renderParams params <> ":") :
-  (view _Wrapped body >>= \(_, a, b) -> (foldMap renderWhitespace a <>) <$> renderStatement b)
-renderStatement (Return _ expr) = ["return " <> renderExpr expr]
-renderStatement (Expr _ expr) = [renderExpr expr]
-renderStatement (If _ expr body body') =
-  ("if " <> renderExpr expr <> ":") :
-  (view _Wrapped body >>=
-   \(_, a, b) -> (foldMap renderWhitespace a <>) <$> renderStatement b) <>
-  foldMap
-    (\body'' ->
-       ["else:"] <>
-       (view _Wrapped body'' >>=
-          \(_, a, b) -> (foldMap renderWhitespace a <>) <$> renderStatement b))
-    body'
-renderStatement (While _ expr body) =
-  ("while " <> renderExpr expr <> ":") :
-  (view _Wrapped body >>=
-   \(_, a, b) -> (foldMap renderWhitespace a <>) <$> renderStatement b)
-renderStatement (Assign _ lvalue rvalue) = [renderExpr lvalue <> " = " <> renderExpr rvalue]
-renderStatement (Pass _) = ["pass"]
-renderStatement (Break _) = ["break"]
+renderStatement :: Statement v a -> Lines String
+renderStatement (Fundef _ ws1 name ws2 params ws3 ws4 nl body) =
+  ManyLines firstLine nl restLines
+  where
+    firstLine =
+      "def" <> foldMap renderWhitespace ws1 <> name <>
+      foldMap renderWhitespace ws2 <> renderParams params <>
+      foldMap renderWhitespace ws3 <> ":" <> foldMap renderWhitespace ws4
+    restLines =
+      foldMap
+        (\(_, a, b, nl) -> maybe id endWith nl $ (foldMap renderWhitespace a <>) <$> renderStatement b)
+        (view _Wrapped body)
+renderStatement (Return _ ws expr) =
+  OneLine $ "return" <> foldMap renderWhitespace ws <> renderExpr expr
+renderStatement (Expr _ expr) = OneLine $ renderExpr expr
+renderStatement (If _ ws1 expr ws2 ws3 nl body body') =
+  ManyLines firstLine nl restLines <> fold elseLines
+  where
+    firstLine =
+      "if" <> foldMap renderWhitespace ws1 <>
+      renderExpr expr <> foldMap renderWhitespace ws2 <> ":" <>
+      foldMap renderWhitespace ws3
+    restLines =
+      foldMap
+        (\(_, a, b, nl) -> maybe id endWith nl $ (foldMap renderWhitespace a <>) <$> renderStatement b)
+        (view _Wrapped body)
+    elseLines =
+      ManyLines <$>
+      fmap
+        (\(ws4, ws5, _, _) ->
+           "else" <> foldMap renderWhitespace ws4 <> ":" <>
+           foldMap renderWhitespace ws4)
+        body' <*>
+      fmap (\(_, _, nl2, _) -> nl2) body' <*>
+      fmap
+        (\(_, _, _, body'') ->
+           foldMap
+             (\(_, a, b, nl) -> maybe id endWith nl $ (foldMap renderWhitespace a <>) <$> renderStatement b)
+             (view _Wrapped body''))
+        body'
+renderStatement (While _ ws1 expr ws2 ws3 nl body) =
+  ManyLines
+    ("while" <> foldMap renderWhitespace ws1 <> renderExpr expr <>
+     foldMap renderWhitespace ws2 <> ":" <> foldMap renderWhitespace ws3)
+    nl
+    (foldMap
+       (\(_, a, b, nl) -> maybe id endWith nl $ (foldMap renderWhitespace a <>) <$> renderStatement b)
+       (view _Wrapped body))
+renderStatement (Assign _ lvalue ws1 ws2 rvalue) =
+  OneLine $
+  renderExpr lvalue <> foldMap renderWhitespace ws1 <> "=" <>
+  foldMap renderWhitespace ws2 <> renderExpr rvalue
+renderStatement (Pass _) = OneLine "pass"
+renderStatement (Break _) = OneLine "break"
 
-renderArgs :: Args v a -> String
-renderArgs a = "(" <> intercalate ", " (fmap go a) <> ")"
+renderArgs :: CommaSep (Arg v a) -> String
+renderArgs a = "(" <> renderCommaSep go a <> ")"
   where
     go (PositionalArg _ expr) = renderExpr expr
-    go (KeywordArg _ name expr) = name <> "=" <> renderExpr expr
+    go (KeywordArg _ name ws1 ws2 expr) =
+      name <> foldMap renderWhitespace ws1 <> "=" <>
+      foldMap renderWhitespace ws2 <> renderExpr expr
 
-renderParams :: Params v a -> String
-renderParams a = "(" <> intercalate ", " (fmap go a) <> ")"
+renderParams :: CommaSep (Param v a) -> String
+renderParams a = "(" <> renderCommaSep go a <> ")"
   where
     go (PositionalParam _ name) = name
-    go (KeywordParam _ name expr) = name <> "=" <> renderExpr expr
+    go (KeywordParam _ name ws1 ws2 expr) =
+      name <>
+      foldMap renderWhitespace ws1 <> "=" <>
+      foldMap renderWhitespace ws2 <> renderExpr expr
 
 renderBinOp :: BinOp a -> String
 renderBinOp (Is _) = "is"

@@ -4,6 +4,7 @@ module Language.Python.Internal.Optics where
 
 import Control.Lens
 import Data.Coerce
+import Data.List.NonEmpty
 import Language.Python.Internal.Syntax
 
 class Validated s where
@@ -22,6 +23,8 @@ data KeywordParam v a
   = MkKeywordParam
   { _kpAnn :: a
   , _kpName :: String
+  , _kpWhitespaceLeft :: [Whitespace]
+  , _kpWhitespaceRight :: [Whitespace]
   , _kpExpr :: Expr v a
   } deriving (Eq, Show)
 makeLenses ''KeywordParam
@@ -34,32 +37,42 @@ _KeywordParam
        (KeywordParam '[] a)
 _KeywordParam =
   prism
-    (\(MkKeywordParam a b c) -> KeywordParam a b c)
+    (\(MkKeywordParam a b c d e) -> KeywordParam a b c d e)
     (\case
-        (coerce -> KeywordParam a b c) -> Right (MkKeywordParam a b c)
+        (coerce -> KeywordParam a b c d e) -> Right (MkKeywordParam a b c d e)
         (coerce -> a) -> Left a)
 
 _Fundef
   :: Prism
        (Statement v a)
        (Statement '[] a)
-       (a, String, Params v a, Block v a)
-       (a, String, Params '[] a, Block '[] a)
+       ( a
+       , NonEmpty Whitespace, String
+       , [Whitespace], CommaSep (Param v a)
+       , [Whitespace], [Whitespace], Newline
+       , Block v a
+       )
+       ( a
+       , NonEmpty Whitespace, String
+       , [Whitespace], CommaSep (Param '[] a)
+       , [Whitespace], [Whitespace], Newline
+       , Block '[] a
+       )
 _Fundef =
   prism
-    (\(a, b, c, d) -> Fundef a b c d)
-    (\case; (coerce -> Fundef a b c d) -> Right (a, b, c, d); (coerce -> a) -> Left a)
+    (\(a, b, c, d, e, f, g, h, i) -> Fundef a b c d e f g h i)
+    (\case; (coerce -> Fundef a b c d e f g h i) -> Right (a, b, c, d, e, f, g, h, i); (coerce -> a) -> Left a)
 
 _Call
   :: Prism
        (Expr v a)
        (Expr '[] a)
-       (a, Expr v a, Args v a)
-       (a, Expr '[] a, Args '[] a)
+       (a, Expr v a, [Whitespace], CommaSep (Arg v a))
+       (a, Expr '[] a, [Whitespace], CommaSep (Arg '[] a))
 _Call =
   prism
-    (\(a, b, c) -> Call a b c)
-    (\case; (coerce -> Call a b c) -> Right (a, b, c); (coerce -> a) -> Left a)
+    (\(a, b, c, d) -> Call a b c d)
+    (\case; (coerce -> Call a b c d) -> Right (a, b, c, d); (coerce -> a) -> Left a)
 
 _Ident
   :: Prism
