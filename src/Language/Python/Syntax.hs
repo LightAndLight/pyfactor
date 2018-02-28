@@ -14,7 +14,7 @@ class HasKeyword p where
 instance HasPositional (Param '[] ()) String where; p_ = PositionalParam ()
 instance HasKeyword (Param '[] ()) where; k_ a = KeywordParam () a [] []
 instance HasPositional (Arg '[] ()) (Expr '[] ()) where; p_ = PositionalArg ()
-instance HasKeyword (Arg '[] ()) where; k_ = KeywordArg ()
+instance HasKeyword (Arg '[] ()) where; k_ a = KeywordArg () a [] []
 
 def_ :: String -> [Param '[] ()] -> [Statement '[] ()] -> Statement '[] ()
 def_ name params block =

@@ -197,7 +197,9 @@ renderArgs :: CommaSep (Arg v a) -> String
 renderArgs a = "(" <> renderCommaSep go a <> ")"
   where
     go (PositionalArg _ expr) = renderExpr expr
-    go (KeywordArg _ name expr) = name <> "=" <> renderExpr expr
+    go (KeywordArg _ name ws1 ws2 expr) =
+      name <> foldMap renderWhitespace ws1 <> "=" <>
+      foldMap renderWhitespace ws2 <> renderExpr expr
 
 renderParams :: CommaSep (Param v a) -> String
 renderParams a = "(" <> renderCommaSep go a <> ")"

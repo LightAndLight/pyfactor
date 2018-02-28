@@ -45,6 +45,8 @@ data Arg (v :: [*]) a
   | KeywordArg
   { _argAnn :: a
   , _unsafeKeywordArgName :: String
+  , _unsafeKeywordArgWhitespaceLeft :: [Whitespace]
+  , _unsafeKeywordArgWhitespaceRight :: [Whitespace]
   , _argExpr :: Expr v a
   }
   deriving (Eq, Show)
@@ -52,7 +54,7 @@ instance IsString (Arg '[] ()) where fromString = PositionalArg () . fromString
 argExpr :: Lens (Arg v a) (Arg '[] a) (Expr v a) (Expr '[] a)
 argExpr = lens _argExpr (\s a -> s { _argExpr = a })
 instance HasExprs Arg where
-  _Exprs f (KeywordArg a name expr) = KeywordArg a name <$> f expr
+  _Exprs f (KeywordArg a name ws1 ws2 expr) = KeywordArg a name ws1 ws2 <$> f expr
   _Exprs f (PositionalArg a expr) = PositionalArg a <$> f expr
 
 data Whitespace = Space | Tab | Continued [Whitespace] deriving (Eq, Show)

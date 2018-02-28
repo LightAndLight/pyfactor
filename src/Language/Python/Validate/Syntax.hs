@@ -233,12 +233,12 @@ validateArgsSyntax e = go [] False (toList e) $> coerce e
         errs = [_PositionalAfterKeywordArg # (a, expr)]
       in
         Failure errs <*> go names True args
-    go names _ (KeywordArg a name expr : args)
+    go names _ (KeywordArg a name ws1 ws2 expr : args)
       | name `elem` names =
           Failure [_DuplicateArgument # (a, name)] <*> go names True args
       | otherwise =
           liftA2 (:)
-            (KeywordArg a name <$> validateExprSyntax expr)
+            (KeywordArg a name ws1 ws2 <$> validateExprSyntax expr)
             (go (name:names) True args)
 
 validateParamsSyntax
