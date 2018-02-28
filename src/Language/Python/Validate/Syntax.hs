@@ -13,6 +13,7 @@ import Control.Lens.Tuple
 import Control.Lens.Traversal
 import Data.Char
 import Data.Coerce
+import Data.Foldable
 import Data.Semigroup
 import Data.Type.Set
 import Data.Validate
@@ -239,8 +240,8 @@ validateParamsSyntax
   :: ( AsSyntaxError e v a
      , Member Indentation v
      )
-  => Params v a -> Validate [e] (Params (Nub (Syntax ': v)) a)
-validateParamsSyntax = go [] False
+  => CommaSep (Param v a) -> Validate [e] (CommaSep (Param (Nub (Syntax ': v)) a))
+validateParamsSyntax e = go [] False (toList e) *> pure (coerce e)
   where
     go _ _ [] = pure []
     go names False (PositionalParam a name : params)

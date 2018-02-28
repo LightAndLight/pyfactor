@@ -4,6 +4,7 @@
   MultiParamTypeClasses #-}
 module Language.Python.Internal.Syntax where
 
+import Control.Lens.Fold
 import Control.Lens.Getter
 import Control.Lens.Lens
 import Control.Lens.TH
@@ -16,8 +17,8 @@ import Data.Functor
 import Data.List.NonEmpty
 import Data.Monoid
 import Data.String
+import GHC.Exts
 
-type Params v a = [Param v a]
 data Param (v :: [*]) a
   = PositionalParam
   { _paramAnn :: a
@@ -77,7 +78,7 @@ data Newline = CR | LF | CRLF deriving (Eq, Show)
 data Statement (v :: [*]) a
   = Fundef a
       (NonEmpty Whitespace) String
-      [Whitespace] (Params v a)
+      [Whitespace] (CommaSep (Param v a))
       [Whitespace] [Whitespace] Newline
       (Block v a)
   | Return a [Whitespace] (Expr v a)
@@ -117,7 +118,11 @@ data CommaSep a
 listToCommaSep :: [a] -> CommaSep a
 listToCommaSep [] = CommaSepNone
 listToCommaSep [a] = CommaSepOne a Nothing
-listToCommaSep (a:as) = CommaSepMany a [] [] $ listToCommaSep as
+listToCommaSep (a:as) = CommaSepMany a [] [Space] $ listToCommaSep as
+instance IsList (CommaSep a) where
+  type Item (CommaSep a) = a
+  fromList = listToCommaSep
+  toList = toListOf folded
 
 data Expr (v :: [*]) a
   = List a [Whitespace] (CommaSep (Expr v a)) [Whitespace]

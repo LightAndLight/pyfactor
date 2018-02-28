@@ -46,13 +46,13 @@ _Fundef
        (Statement '[] a)
        ( a
        , NonEmpty Whitespace, String
-       , [Whitespace], Params v a
+       , [Whitespace], CommaSep (Param v a)
        , [Whitespace], [Whitespace], Newline
        , Block v a
        )
        ( a
        , NonEmpty Whitespace, String
-       , [Whitespace], Params '[] a
+       , [Whitespace], CommaSep (Param '[] a)
        , [Whitespace], [Whitespace], Newline
        , Block '[] a
        )

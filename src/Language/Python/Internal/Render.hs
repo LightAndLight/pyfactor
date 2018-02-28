@@ -155,12 +155,12 @@ renderStatement (Return _ ws expr) =
   OneLine $ "return" <> foldMap renderWhitespace ws <> renderExpr expr
 renderStatement (Expr _ expr) = OneLine $ renderExpr expr
 renderStatement (If _ ws1 expr ws2 ws3 nl body body') =
-  ManyLines firstLine LF restLines <> fold elseLines
+  ManyLines firstLine nl restLines <> fold elseLines
   where
     firstLine =
       "if" <> foldMap renderWhitespace ws1 <>
       renderExpr expr <> foldMap renderWhitespace ws2 <> ":" <>
-      foldMap renderWhitespace ws3 <> renderNewline nl
+      foldMap renderWhitespace ws3
     restLines =
       foldMap
         (\(_, a, b, nl) -> maybe id endWith nl $ (foldMap renderWhitespace a <>) <$> renderStatement b)
@@ -200,8 +200,8 @@ renderArgs a = "(" <> intercalate ", " (fmap go a) <> ")"
     go (PositionalArg _ expr) = renderExpr expr
     go (KeywordArg _ name expr) = name <> "=" <> renderExpr expr
 
-renderParams :: Params v a -> String
-renderParams a = "(" <> intercalate ", " (fmap go a) <> ")"
+renderParams :: CommaSep (Param v a) -> String
+renderParams a = "(" <> renderCommaSep go a <> ")"
   where
     go (PositionalParam _ name) = name
     go (KeywordParam _ name expr) = name <> "=" <> renderExpr expr

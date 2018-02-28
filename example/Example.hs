@@ -9,6 +9,7 @@ import Control.Lens.Fold
 import Control.Lens.Plated
 import Control.Lens.Prism
 import Control.Lens.Tuple
+import Data.Foldable
 import Data.Semigroup
 import GHC.Natural
 import Language.Python.Internal.Optics
@@ -102,13 +103,14 @@ bracketing =
 fixMDA :: Statement '[] () -> Maybe (Statement '[] ())
 fixMDA input = do
   (_, _, name, _, params, _, _, _, body) <- input ^? _Fundef
-  targetParam <- params ^? folded._KeywordParam.filtered (isMutable._kpExpr)
+  let params' = toList params
+  targetParam <- params' ^? folded._KeywordParam.filtered (isMutable._kpExpr)
 
   let
     pname = targetParam ^. kpName
 
     newparams =
-      params & traverse._KeywordParam.filtered (isMutable._kpExpr).kpExpr .~ none_
+      params' & traverse._KeywordParam.filtered (isMutable._kpExpr).kpExpr .~ none_
 
     fixed =
       if_ (var_ pname `is_` none_) [ var_ pname .= list_ [] ]
@@ -143,12 +145,14 @@ yes =
 optimize_tr st = do
   (_, _, name, _, params, _, _, _, body) <- st ^? _Fundef
   bodyLast <- toListOf (unvalidated._Statements) body ^? _last
-  let paramNames = _paramName <$> params
+  let
+    params' = toList params
+    paramNames = _paramName <$> params'
   if not $ hasTC name bodyLast
     then Nothing
     else
       Just .
-      def_ name params $
+      def_ name params' $
         zipWith (\a b -> var_ (a <> "__tr") .= var_ b) paramNames paramNames <>
         [ "__res__tr" .= none_
         , while_ true_ .

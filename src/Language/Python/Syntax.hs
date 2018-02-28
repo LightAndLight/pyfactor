@@ -21,7 +21,7 @@ def_ name params block =
     [Space]
     name
     []
-    params
+    (listToCommaSep params)
     []
     []
     LF
