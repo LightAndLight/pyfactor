@@ -12,7 +12,7 @@ class HasKeyword p where
   k_ :: String -> Expr '[] () -> p
 
 instance HasPositional (Param '[] ()) String where; p_ = PositionalParam ()
-instance HasKeyword (Param '[] ()) where; k_ = KeywordParam ()
+instance HasKeyword (Param '[] ()) where; k_ a = KeywordParam () a [] []
 instance HasPositional (Arg '[] ()) (Expr '[] ()) where; p_ = PositionalArg ()
 instance HasKeyword (Arg '[] ()) where; k_ = KeywordArg ()
 

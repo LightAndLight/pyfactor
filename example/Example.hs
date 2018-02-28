@@ -27,7 +27,7 @@ append_to a =
     "append_to"
     []
     [ PositionalParam a "element"
-    , KeywordParam a "to" (List a [] CommaSepNone [])
+    , KeywordParam a "to" [] [] (List a [] CommaSepNone [])
     ]
     []
     []
@@ -73,7 +73,7 @@ append_to'' a =
     "append_to"
     []
     [ PositionalParam a "element"
-    , KeywordParam a "to" (List a [] CommaSepNone [])
+    , KeywordParam a "to" [] [] (List a [] CommaSepNone [])
     ]
     []
     []

@@ -203,7 +203,10 @@ renderParams :: CommaSep (Param v a) -> String
 renderParams a = "(" <> renderCommaSep go a <> ")"
   where
     go (PositionalParam _ name) = name
-    go (KeywordParam _ name expr) = name <> "=" <> renderExpr expr
+    go (KeywordParam _ name ws1 ws2 expr) =
+      name <>
+      foldMap renderWhitespace ws1 <> "=" <>
+      foldMap renderWhitespace ws2 <> renderExpr expr
 
 renderBinOp :: BinOp a -> String
 renderBinOp (Is _) = "is"

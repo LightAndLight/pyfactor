@@ -27,11 +27,14 @@ data Param (v :: [*]) a
   | KeywordParam
   { _paramAnn :: a
   , _paramName :: String
+  , _unsafeKeywordParamWhitespaceLeft :: [Whitespace]
+  , _unsafeKeywordParamWhitespaceRight :: [Whitespace]
   , _unsafeKeywordParamExpr :: Expr v a
   }
   deriving (Eq, Show)
 instance HasExprs Param where
-  _Exprs f (KeywordParam a name expr) = KeywordParam a name <$> f expr
+  _Exprs f (KeywordParam a name ws1 ws2 expr) =
+    KeywordParam a name <$> pure ws1 <*> pure ws2 <*> f expr
   _Exprs _ p@PositionalParam{} = pure $ coerce p
 
 data Arg (v :: [*]) a
