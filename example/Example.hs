@@ -26,14 +26,21 @@ append_to a =
     [Space]
     "append_to"
     []
-    [ PositionalParam a "element"
-    , KeywordParam a "to" [] [] (List a [] CommaSepNone [])
-    ]
+    ( CommaSepMany (PositionalParam a "element") [] [] $
+      CommaSepOne (KeywordParam a "to" [] [] (List a [] CommaSepNone [])) Nothing
+    )
     []
     []
     LF
     (Block
-     [ (a, replicate 4 Space, Expr a $ Call a (Deref a (Ident a "to") [] [] "append") [] [PositionalArg a (Ident a "element")], Just LF)
+     [ ( a
+       , replicate 4 Space
+       , Expr a $
+         Call a
+           (Deref a (Ident a "to") [] [] "append") []
+           (CommaSepOne (PositionalArg a (Ident a "element")) Nothing)
+       , Just LF
+       )
      , (a, replicate 4 Space, Return a [Space] (Ident a "to"), Just LF)
      ])
 
@@ -72,14 +79,20 @@ append_to'' a =
     [Space]
     "append_to"
     []
-    [ PositionalParam a "element"
-    , KeywordParam a "to" [] [] (List a [] CommaSepNone [])
-    ]
+    ( CommaSepMany (PositionalParam a "element") [] [] $
+      CommaSepOne (KeywordParam a "to" [] [] (List a [] CommaSepNone [])) Nothing
+    )
     []
     []
     LF
     (Block
-     [ (a, replicate 4 Space, Expr a $ Call a (Deref a (Ident a "to") [] [] "append") [] [PositionalArg a (Ident a "element")], Just LF)
+     [ ( a
+       , replicate 4 Space
+       , Expr a $
+         Call a
+           (Deref a (Ident a "to") [] [] "append") []
+           (CommaSepOne (PositionalArg a (Ident a "element")) Nothing)
+       , Just LF)
      , (a, replicate 4 Space ++ [Continued [Space, Space]], Return a [Space] (Ident a "to"), Just LF)
      ])
 

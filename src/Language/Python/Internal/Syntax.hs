@@ -4,7 +4,6 @@
   MultiParamTypeClasses #-}
 module Language.Python.Internal.Syntax where
 
-import Control.Lens.Fold
 import Control.Lens.Getter
 import Control.Lens.Lens
 import Control.Lens.TH
@@ -17,7 +16,6 @@ import Data.Functor
 import Data.List.NonEmpty
 import Data.Monoid
 import Data.String
-import GHC.Exts
 
 data Param (v :: [*]) a
   = PositionalParam
@@ -111,7 +109,8 @@ instance Plated (Statement v a) where
   plate _ s@Return{} = pure $ coerce s
   plate _ s@Expr{} = pure $ coerce s
   plate _ s@Assign{} = pure $ coerce s
-  plate f (While a ws1 b ws2 ws3 nl sts) = While a ws1 b ws2 ws3 nl <$> (_Wrapped.traverse._3) f sts
+  plate f (While a ws1 b ws2 ws3 nl sts) =
+    While a ws1 b ws2 ws3 nl <$> (_Wrapped.traverse._3) f sts
   plate _ s@Break{} = pure $ coerce s
   plate _ s@Pass{} = pure $ coerce s
 
@@ -124,10 +123,6 @@ listToCommaSep :: [a] -> CommaSep a
 listToCommaSep [] = CommaSepNone
 listToCommaSep [a] = CommaSepOne a Nothing
 listToCommaSep (a:as) = CommaSepMany a [] [Space] $ listToCommaSep as
-instance IsList (CommaSep a) where
-  type Item (CommaSep a) = a
-  fromList = listToCommaSep
-  toList = toListOf folded
 
 data Expr (v :: [*]) a
   = List a [Whitespace] (CommaSep (Expr v a)) [Whitespace]
