@@ -14,7 +14,8 @@ import Control.Lens.Traversal
 import Data.Char
 import Data.Coerce
 import Data.Foldable
-import Data.Semigroup
+import Data.Functor
+import Data.Semigroup (Semigroup(..))
 import Data.Type.Set
 import Data.Validate
 import Language.Python.Internal.Render
@@ -213,11 +214,15 @@ validateArgsSyntax
   :: ( AsSyntaxError e v a
      , Member Indentation v
      )
-  => Args v a -> Validate [e] (Args (Nub (Syntax ': v)) a)
-validateArgsSyntax = go [] False
+  => CommaSep (Arg v a) -> Validate [e] (CommaSep (Arg (Nub (Syntax ': v)) a))
+validateArgsSyntax e = go [] False (toList e) $> coerce e
   where
-    go :: (AsSyntaxError e v a, Member Indentation v)
-       => [String] -> Bool -> Args v a -> Validate [e] (Args (Nub (Syntax ': v)) a)
+    go
+      :: (AsSyntaxError e v a, Member Indentation v)
+      => [String]
+      -> Bool
+      -> [Arg v a]
+      -> Validate [e] [Arg (Nub (Syntax ': v)) a]
     go _ _ [] = pure []
     go names False (PositionalArg a expr : args) =
       liftA2 (:)
@@ -241,7 +246,7 @@ validateParamsSyntax
      , Member Indentation v
      )
   => CommaSep (Param v a) -> Validate [e] (CommaSep (Param (Nub (Syntax ': v)) a))
-validateParamsSyntax e = go [] False (toList e) *> pure (coerce e)
+validateParamsSyntax e = go [] False (toList e) $> coerce e
   where
     go _ _ [] = pure []
     go names False (PositionalParam a name : params)

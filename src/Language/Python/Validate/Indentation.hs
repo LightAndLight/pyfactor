@@ -68,8 +68,8 @@ validateParamsIndentation e = pure $ coerce e
 
 validateArgsIndentation
   :: AsIndentationError e v a
-  => Args v a
-  -> Validate [e] (Args (Nub (Indentation ': v)) a)
+  => CommaSep (Arg v a)
+  -> Validate [e] (CommaSep (Arg (Nub (Indentation ': v)) a))
 validateArgsIndentation e = pure $ coerce e
 
 validateStatementIndentation

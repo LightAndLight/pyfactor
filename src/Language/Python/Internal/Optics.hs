@@ -65,8 +65,8 @@ _Call
   :: Prism
        (Expr v a)
        (Expr '[] a)
-       (a, Expr v a, [Whitespace], Args v a)
-       (a, Expr '[] a, [Whitespace], Args '[] a)
+       (a, Expr v a, [Whitespace], CommaSep (Arg v a))
+       (a, Expr '[] a, [Whitespace], CommaSep (Arg '[] a))
 _Call =
   prism
     (\(a, b, c, d) -> Call a b c d)

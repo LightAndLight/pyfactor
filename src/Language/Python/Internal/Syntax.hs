@@ -34,7 +34,6 @@ instance HasExprs Param where
   _Exprs f (KeywordParam a name expr) = KeywordParam a name <$> f expr
   _Exprs _ p@PositionalParam{} = pure $ coerce p
 
-type Args (v :: [*]) a = [Arg v a]
 data Arg (v :: [*]) a
   = PositionalArg
   { _argAnn :: a
@@ -46,6 +45,7 @@ data Arg (v :: [*]) a
   , _argExpr :: Expr v a
   }
   deriving (Eq, Show)
+instance IsString (Arg '[] ()) where fromString = PositionalArg () . fromString
 argExpr :: Lens (Arg v a) (Arg '[] a) (Expr v a) (Expr '[] a)
 argExpr = lens _argExpr (\s a -> s { _argExpr = a })
 instance HasExprs Arg where
@@ -127,7 +127,7 @@ instance IsList (CommaSep a) where
 data Expr (v :: [*]) a
   = List a [Whitespace] (CommaSep (Expr v a)) [Whitespace]
   | Deref a (Expr v a) [Whitespace] [Whitespace] String
-  | Call a (Expr v a) [Whitespace] (Args v a)
+  | Call a (Expr v a) [Whitespace] (CommaSep (Arg v a))
   | None a
   | BinOp a (Expr v a) [Whitespace] (BinOp a) [Whitespace] (Expr v a)
   | Negate a [Whitespace] (Expr v a)

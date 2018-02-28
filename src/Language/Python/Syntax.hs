@@ -3,7 +3,6 @@
 {-# language OverloadedLists #-}
 module Language.Python.Syntax where
 
-import Data.String
 import Language.Python.Internal.Syntax
 
 class HasPositional p v | p -> v where
@@ -14,6 +13,8 @@ class HasKeyword p where
 
 instance HasPositional (Param '[] ()) String where; p_ = PositionalParam ()
 instance HasKeyword (Param '[] ()) where; k_ = KeywordParam ()
+instance HasPositional (Arg '[] ()) (Expr '[] ()) where; p_ = PositionalArg ()
+instance HasKeyword (Arg '[] ()) where; k_ = KeywordArg ()
 
 def_ :: String -> [Param '[] ()] -> [Statement '[] ()] -> Statement '[] ()
 def_ name params block =
@@ -27,16 +28,8 @@ def_ name params block =
     LF
     (Block $ (\a -> (,,,) () [Space, Space, Space, Space] a $ Just LF) <$> block)
 
-data Argument = AP (Expr '[] ()) | AK String (Expr '[] ())
-instance HasPositional Argument (Expr '[] ()) where; p_ = AP
-instance IsString Argument where fromString = AP . fromString
-
-mkArg :: Argument -> Arg '[] ()
-mkArg (AP expr) = PositionalArg () expr
-mkArg (AK name expr) = KeywordArg () name expr
-
-call_ :: Expr '[] () -> [Argument] -> Expr '[] ()
-call_ expr args = Call () expr [] (fmap mkArg args)
+call_ :: Expr '[] () -> [Arg '[] ()] -> Expr '[] ()
+call_ expr args = Call () expr [] (listToCommaSep args)
 
 return_ :: Expr '[] () -> Statement '[] ()
 return_ = Return () [Space]

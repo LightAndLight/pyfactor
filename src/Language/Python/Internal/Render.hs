@@ -8,9 +8,8 @@ import Control.Lens.Getter
 import Control.Lens.Prism
 import Control.Lens.Wrapped
 import Data.Foldable
-import Data.List
 import Data.Maybe
-import Data.Semigroup
+import Data.Semigroup (Semigroup(..))
 import Language.Python.Internal.Syntax
 
 data Lines a
@@ -194,8 +193,8 @@ renderStatement (Assign _ lvalue ws1 ws2 rvalue) =
 renderStatement (Pass _) = OneLine "pass"
 renderStatement (Break _) = OneLine "break"
 
-renderArgs :: Args v a -> String
-renderArgs a = "(" <> intercalate ", " (fmap go a) <> ")"
+renderArgs :: CommaSep (Arg v a) -> String
+renderArgs a = "(" <> renderCommaSep go a <> ")"
   where
     go (PositionalArg _ expr) = renderExpr expr
     go (KeywordArg _ name expr) = name <> "=" <> renderExpr expr
