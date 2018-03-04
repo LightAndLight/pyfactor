@@ -1,4 +1,4 @@
-{-# language DataKinds, LambdaCase, ViewPatterns #-}
+{-# language DataKinds, PolyKinds, LambdaCase, ViewPatterns #-}
 {-# language TemplateHaskell #-}
 module Language.Python.Internal.Optics where
 
@@ -90,3 +90,30 @@ _Indents
        (Statement v a)
        [Whitespace]
 _Indents f = fmap coerce . (_Blocks._Wrapped) ((traverse._2) f . coerce)
+
+class HasNewlines s where
+  _Newlines :: Traversal' (s v a) Newline
+
+instance HasNewlines Block where
+  _Newlines f (Block b) =
+    Block <$>
+    traverse (\(a, b, c, d) -> (,,,) a b <$> _Newlines f c <*> traverse f d) b
+
+instance HasNewlines Statement where
+  _Newlines f s =
+    case s of
+      Fundef ann ws1 name ws2 params ws3 ws4 nl block ->
+        Fundef ann ws1 name ws2 params ws3 ws4 <$> f nl <*> _Newlines f block
+      Return{} -> pure s
+      Expr{} -> pure s
+      If ann ws1 cond ws2 ws3 nl block els ->
+        If ann ws1 cond ws2 ws3 <$>
+        f nl <*>
+        _Newlines f block <*>
+        traverse
+          (\(a, b, c, d) -> (,,,) a b <$> f nl <*> _Newlines f block)
+          els
+      While ann ws1 cond ws2 ws3 nl block -> While ann ws1 cond ws2 ws3 <$> f nl <*> _Newlines f block
+      Assign{} -> pure s
+      Pass{} -> pure s
+      Break{} -> pure s
