@@ -1,4 +1,4 @@
-{ mkDerivation, base, lens, parsers, stdenv, trifecta
+{ mkDerivation, base, lens, mtl, parsers, stdenv, trifecta
 , type-level-sets
 }:
 mkDerivation {
@@ -8,7 +8,7 @@ mkDerivation {
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
-    base lens parsers trifecta type-level-sets
+    base lens mtl parsers trifecta type-level-sets
   ];
   executableHaskellDepends = [ base lens ];
   license = stdenv.lib.licenses.bsd3;

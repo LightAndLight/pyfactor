@@ -26,7 +26,12 @@ library
                      , Language.Python.Validate.Syntax.Error
                      , Language.Python.Validate.Indentation
                      , Language.Python.Validate.Indentation.Error
-  build-depends:       base >=4.9 && <4.11, lens, type-level-sets >=0.8.6.0, parsers, trifecta
+  build-depends:       base >=4.9 && <4.11
+                     , lens
+                     , type-level-sets >=0.8.6.0
+                     , parsers
+                     , trifecta
+                     , mtl
   hs-source-dirs:      src
   default-language:    Haskell2010
   ghc-options:         -O2

@@ -1,10 +1,13 @@
 {-# language DataKinds #-}
+{-# language FlexibleContexts #-}
 module Language.Python.Internal.Parse where
 
 import Control.Applicative
 import Control.Lens hiding (List, argument)
+import Control.Monad.State
 import Data.Foldable
 import Data.Functor
+import Data.List.NonEmpty (some1)
 import Data.Semigroup hiding (Arg)
 import Text.Parser.Token hiding (commaSep)
 import Text.Trifecta hiding (newline, commaSep)
@@ -44,15 +47,27 @@ commaSep e = someCommaSep <|> pure CommaSepNone
         Nothing -> pure $ CommaSepOne val
         Just a -> pure a
 
+parameter :: DeltaParsing m => m (Untagged Param Span)
+parameter = kwparam <|> posparam
+  where
+    kwparam =
+      try
+        ((\a b c d e -> KeywordParam e a b c d) <$>
+         identifier <*>
+         many whitespace <*
+         char '=') <*>
+      many whitespace <*> expr
+    posparam = flip PositionalParam <$> identifier
+
 argument :: DeltaParsing m => m (Untagged Arg Span)
 argument = kwarg <|> posarg
   where
     kwarg =
       try
         ((\a b c d e -> KeywordArg e a b c d) <$>
-        identifier <*>
-        many whitespace <*
-        char '=') <*>
+         identifier <*>
+         many whitespace <*
+         char '=') <*>
       many whitespace <*> expr
     posarg = flip PositionalArg <$> expr
 
@@ -74,11 +89,11 @@ expr = orExpr
       char '[' <*> many whitespace <*> commaSep expr <*> many whitespace <* char ']'
 
     bool = fmap (flip Bool) $
-      (string "True" $> True) <|>
-      (string "False" $> False)
+      (reserved "True" $> True) <|>
+      (reserved "False" $> False)
 
     none =
-      string "None" $> None
+      reserved "None" $> None
 
     strLit =
       fmap (flip String) $
@@ -157,3 +172,68 @@ expr = orExpr
           (\ws1 (csep :~ s) a -> Call (a ^. exprAnnotation <> s) a ws1 csep) <$>
           try (many whitespace <* char '(') <*>
           spanned (commaSep (annotated argument) <* char ')')
+
+indent :: (CharParsing m, MonadState [[Whitespace]] m) => m ()
+indent = do
+  level
+  ws <- some whitespace <?> "indent"
+  modify (ws :)
+
+level :: (CharParsing m, MonadState [[Whitespace]] m) => m ()
+level = get >>= foldl (\b a -> b <* traverse parseWs a) (pure ())
+  where
+    parseWs Space = char ' '$> ()
+    parseWs Tab = char '\t' $> ()
+    parseWs (Continued nl ws) = pure ()
+
+dedent :: MonadState [[Whitespace]] m => m ()
+dedent = modify tail
+
+block :: (DeltaParsing m, MonadState [[Whitespace]] m) => m (Block '[] Span)
+block = indent *> fmap Block go <* dedent
+  where
+    go =
+      many $
+      (\(f :~ a) -> f a) <$>
+      spanned
+        ((\a b c d -> (d, a, b, c)) <$>
+         (try level *> fmap head get) <*>
+         statement <*>
+         optional newline)
+
+statement :: (DeltaParsing m, MonadState [[Whitespace]] m) => m (Statement '[] Span)
+statement =
+  annotated $
+  fundef <|>
+  returnSt <|>
+  exprSt <|>
+  ifSt <|>
+  while <|>
+  assign <|>
+  pass <|>
+  break
+  where
+    break = reserved "break" $> Break
+    pass = reserved "pass" $> Pass
+    exprSt = flip Expr <$> expr
+    returnSt = (\a b c -> Return c a b) <$ reserved "return" <*> many whitespace <*> expr
+    assign =
+      (\a b c d e -> Assign e a b c d) <$>
+      expr <*>
+      many whitespace <*
+      char '=' <*>
+      many whitespace <*>
+      expr
+    fundef =
+      (\a b c d e f g h i -> Fundef i a b c d e f g h) <$
+      reserved "def" <*> some1 whitespace <*> identifier <*>
+      many whitespace <*> between (char '(') (char ')') (commaSep $ annotated parameter) <*>
+      many whitespace <* char ':' <*> many whitespace <*> newline <*> block
+    ifSt =
+      (\a b c d e f g h -> If h a b c d e f g) <$>
+      (reserved "if" *> many whitespace) <*> expr <*> many whitespace <* char ':' <*>
+      many whitespace <*> newline <*> block <*>
+      optional
+        ((,,,) <$> (reserved "else" *> many whitespace) <*
+         char ':' <*> many whitespace <*> newline <*> block)
+    while = _
