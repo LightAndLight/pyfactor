@@ -13,6 +13,7 @@ data SyntaxError (v :: [*]) a
   | DuplicateArgument a String
   | MissingSpacesIn a String String
   | ExpectedNewlineAfter (a, [Whitespace], Statement v a, Maybe Newline)
+  | IdentifierReservedWord a String
   deriving (Eq, Show)
 
 makeClassyPrisms ''SyntaxError

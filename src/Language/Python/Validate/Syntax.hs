@@ -119,7 +119,9 @@ validateExprSyntax (Bool a b) = pure $ Bool a b
 validateExprSyntax (Negate a ws expr) = Negate a ws <$> validateExprSyntax expr
 validateExprSyntax (String a b) = pure $ String a b
 validateExprSyntax (Int a n) = pure $ Int a n
-validateExprSyntax (Ident a name) = pure $ Ident a name
+validateExprSyntax (Ident a name)
+  | name `elem` reservedWords = Failure [_IdentifierReservedWord # (a, name)]
+  | otherwise = pure $ Ident a name
 validateExprSyntax (List a ws1 exprs ws2) =
   List a ws1 <$> traverse validateExprSyntax exprs <*> pure ws2
 validateExprSyntax (Deref a expr ws1 ws2 name) =
