@@ -28,7 +28,7 @@ whitespace :: CharParsing m => m Whitespace
 whitespace =
   (char ' ' $> Space) <|>
   (char '\t' $> Tab) <|>
-  (Continued <$> newline <*> many whitespace)
+  (Continued <$ char '\\' <*> newline <*> many whitespace)
 
 identifier :: (TokenParsing m, Monad m) => m String
 identifier = runUnspaced $ ident idStyle
@@ -180,7 +180,7 @@ indent = do
   modify (ws :)
 
 level :: (CharParsing m, MonadState [[Whitespace]] m) => m ()
-level = get >>= foldl (\b a -> b <* traverse parseWs a) (pure ())
+level = (get >>= foldl (\b a -> b <* traverse parseWs a) (pure ())) <?> "level indentation"
   where
     parseWs Space = char ' '$> ()
     parseWs Tab = char '\t' $> ()
@@ -190,8 +190,15 @@ dedent :: MonadState [[Whitespace]] m => m ()
 dedent = modify tail
 
 block :: (DeltaParsing m, MonadState [[Whitespace]] m) => m (Block '[] Span)
-block = indent *> fmap Block go <* dedent
+block = fmap Block (liftA2 (:) first go) <* dedent
   where
+    first =
+      (\(f :~ a) -> f a) <$>
+      spanned
+        ((\a b c d -> (d, a, b, c)) <$>
+         (indent *> fmap head get) <*>
+         statement <*>
+         optional newline)
     go =
       many $
       (\(f :~ a) -> f a) <$>
@@ -236,4 +243,7 @@ statement =
       optional
         ((,,,) <$> (reserved "else" *> many whitespace) <*
          char ':' <*> many whitespace <*> newline <*> block)
-    while = _
+    while =
+      (\a b c d e f g -> While g a b c d e f) <$>
+      (reserved "while" *> many whitespace) <*> expr <*> many whitespace <* char ':' <*>
+      many whitespace <*> newline <*> block
