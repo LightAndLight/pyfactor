@@ -50,7 +50,7 @@ instance Semigroup a => Monoid (Lines a) where
 renderWhitespace :: Whitespace -> String
 renderWhitespace Space = " "
 renderWhitespace Tab = "\t"
-renderWhitespace (Continued ws) = "\\\n" <> foldMap renderWhitespace ws
+renderWhitespace (Continued nl ws) = "\\" <> renderNewline nl <> foldMap renderWhitespace ws
 
 renderNewline :: Newline -> String
 renderNewline CR = "\r"
@@ -59,7 +59,7 @@ renderNewline CRLF = "\r\n"
 
 renderCommaSep :: (a -> String) -> CommaSep a -> String
 renderCommaSep _ CommaSepNone = mempty
-renderCommaSep f (CommaSepOne a c) = f a <> foldMap ((<> ",") . foldMap renderWhitespace) c
+renderCommaSep f (CommaSepOne a) = f a
 renderCommaSep f (CommaSepMany a ws1 ws2 c) =
   f a <>
   foldMap renderWhitespace ws1 <> "," <> foldMap renderWhitespace ws2 <>

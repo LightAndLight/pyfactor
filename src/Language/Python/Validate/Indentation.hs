@@ -17,17 +17,17 @@ equivalentIndentation :: [Whitespace] -> [Whitespace] -> Bool
 equivalentIndentation [] [] = True
 equivalentIndentation (x:xs) [] =
   case x of
-    Continued _ -> True
+    Continued _ _ -> True
     _ -> False
 equivalentIndentation [] (y:ys) =
   case y of
-    Continued _ -> True
+    Continued _ _ -> True
     _ -> False
 equivalentIndentation (x:xs) (y:ys) =
   case (x, y) of
     (Space, Space) -> equivalentIndentation xs ys
     (Tab, Tab) -> equivalentIndentation xs ys
-    (Continued _, Continued _) -> True
+    (Continued _ _, Continued _ _) -> True
     _ -> False
 
 validateBlockIndentation

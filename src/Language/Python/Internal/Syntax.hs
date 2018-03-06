@@ -4,6 +4,7 @@
   MultiParamTypeClasses #-}
 module Language.Python.Internal.Syntax where
 
+import Control.Applicative
 import Control.Lens.Getter
 import Control.Lens.Lens
 import Control.Lens.TH
@@ -13,9 +14,64 @@ import Control.Lens.Traversal
 import Control.Lens.Wrapped
 import Data.Coerce
 import Data.Functor
-import Data.List.NonEmpty
+import Data.List.NonEmpty hiding (fromList)
 import Data.Monoid
 import Data.String
+import GHC.Exts
+import Text.Parser.Char
+import Text.Parser.Token
+import Text.Parser.Token.Highlight
+
+reservedWords :: [String]
+reservedWords =
+  [ "False"
+  , "class"
+  , "finally"
+  , "is"
+  , "return"
+  , "None"
+  , "continue"
+  , "for"
+  , "lambda"
+  , "try"
+  , "True"
+  , "def"
+  , "from"
+  , "nonlocal"
+  , "while"
+  , "and"
+  , "del"
+  , "global"
+  , "not"
+  , "with"
+  , "as"
+  , "elif"
+  , "if"
+  , "or"
+  , "yield"
+  , "assert"
+  , "else"
+  , "import"
+  , "pass"
+  , "break"
+  , "except"
+  , "in"
+  , "raise"
+  ]
+
+idStyle :: CharParsing m => IdentifierStyle (Unspaced m)
+idStyle =
+  IdentifierStyle
+  { _styleName = "identifier"
+  , _styleStart = letter <|> char '_'
+  , _styleLetter = letter <|> char '_' <|> digit
+  , _styleReserved = fromList reservedWords
+  , _styleHighlight = Identifier
+  , _styleReservedHighlight = ReservedIdentifier
+  }
+
+reserved :: (TokenParsing m, Monad m) => String -> m ()
+reserved s = runUnspaced $ reserve idStyle s
 
 data Param (v :: [*]) a
   = PositionalParam
@@ -55,7 +111,7 @@ instance HasExprs Arg where
   _Exprs f (KeywordArg a name ws1 ws2 expr) = KeywordArg a name ws1 ws2 <$> f expr
   _Exprs f (PositionalArg a expr) = PositionalArg a <$> f expr
 
-data Whitespace = Space | Tab | Continued [Whitespace] deriving (Eq, Show)
+data Whitespace = Space | Tab | Continued Newline [Whitespace] deriving (Eq, Show)
 
 newtype Block v a = Block { unBlock :: [(a, [Whitespace], Statement v a, Maybe Newline)] }
   deriving (Eq, Show)
@@ -116,26 +172,72 @@ instance Plated (Statement v a) where
 
 data CommaSep a
   = CommaSepNone
-  | CommaSepOne a (Maybe [Whitespace])
+  | CommaSepOne a
   | CommaSepMany a [Whitespace] [Whitespace] (CommaSep a)
   deriving (Eq, Show, Functor, Foldable, Traversable)
 listToCommaSep :: [a] -> CommaSep a
 listToCommaSep [] = CommaSepNone
-listToCommaSep [a] = CommaSepOne a Nothing
+listToCommaSep [a] = CommaSepOne a
 listToCommaSep (a:as) = CommaSepMany a [] [Space] $ listToCommaSep as
 
 data Expr (v :: [*]) a
-  = List a [Whitespace] (CommaSep (Expr v a)) [Whitespace]
-  | Deref a (Expr v a) [Whitespace] [Whitespace] String
-  | Call a (Expr v a) [Whitespace] (CommaSep (Arg v a))
-  | None a
-  | BinOp a (Expr v a) [Whitespace] (BinOp a) [Whitespace] (Expr v a)
-  | Negate a [Whitespace] (Expr v a)
-  | Parens a [Whitespace] (Expr v a) [Whitespace]
-  | Ident a String
-  | Int a Integer
-  | Bool a Bool
-  | String a String
+  = List
+  { _exprAnnotation :: a
+  , _unsafeListWhitespaceLeft :: [Whitespace]
+  , _unsafeListValues :: CommaSep (Expr v a)
+  , _unsafeListWhitespaceRight :: [Whitespace]
+  }
+  | Deref
+  { _exprAnnotation :: a
+  , _unsafeDerefValueLeft :: Expr v a
+  , _unsafeDerefWhitespaceLeft :: [Whitespace]
+  , _unsafeDerefWhitespaceRight :: [Whitespace]
+  , _unsafeDerefValueRight :: String
+  }
+  | Call
+  { _exprAnnotation :: a
+  , _unsafeCallFunction :: Expr v a
+  , _unsafeCallWhitespace :: [Whitespace]
+  , _unsafeCallArguments :: CommaSep (Arg v a)
+  }
+  | None
+  { _exprAnnotation :: a
+  }
+  | BinOp
+  { _exprAnnotation :: a
+  , _unsafeBinOpExprLeft :: Expr v a
+  , _unsafeBinOpWhitespaceLeft :: [Whitespace]
+  , _unsafeBinOpOp :: BinOp a
+  , _unsafeBinOpWhitesepaceRight :: [Whitespace]
+  , _unsafeBinOpExprRight :: Expr v a
+  }
+  | Negate
+  { _exprAnnotation :: a
+  , _unsafeNegateWhitespace :: [Whitespace]
+  , _unsafeNegateValue :: Expr v a
+  }
+  | Parens
+  { _exprAnnotation :: a
+  , _unsafeParensWhitespaceLeft :: [Whitespace]
+  , _unsafeParensValue :: Expr v a
+  , _unsafeParensWhitespaceRight :: [Whitespace]
+  }
+  | Ident
+  { _exprAnnotation :: a
+  , _unsafeIdentValue :: String
+  }
+  | Int
+  { _exprAnnotation :: a
+  , _unsafeIntValue :: Integer
+  }
+  | Bool
+  { _exprAnnotation :: a
+  , _unsafeBoolValue :: Bool
+  }
+  | String
+  { _exprAnnotation :: a
+  , _unsafeStringValue :: String
+  }
   deriving (Eq, Show)
 instance IsString (Expr '[] ()) where
   fromString = Ident ()
@@ -214,7 +316,7 @@ class HasStatements s where
 instance HasStatements Block where
   _Statements = _Wrapped.traverse._3
 
-data Assoc = L | R
+data Assoc = L | R deriving (Eq, Show)
 data OpEntry
   = OpEntry
   { _opOperator :: BinOp ()
@@ -248,3 +350,4 @@ lookupOpEntry op =
       | otherwise = go op xs
 
 makeWrapped ''Block
+makeLenses ''Expr
