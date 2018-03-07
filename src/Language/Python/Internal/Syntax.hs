@@ -73,14 +73,22 @@ idStyle =
 reserved :: (TokenParsing m, Monad m) => String -> m ()
 reserved s = runUnspaced $ reserve idStyle s
 
+data Ident (v :: [*]) a
+  = MkIdent
+  { _identAnntoation :: a
+  , _identValue :: String
+  } deriving (Eq, Show, Functor)
+instance IsString (Ident '[] ()) where
+  fromString = MkIdent ()
+
 data Param (v :: [*]) a
   = PositionalParam
   { _paramAnn :: a
-  , _paramName :: String
+  , _paramName :: Ident v a
   }
   | KeywordParam
   { _paramAnn :: a
-  , _paramName :: String
+  , _paramName :: Ident v a
   , _unsafeKeywordParamWhitespaceLeft :: [Whitespace]
   , _unsafeKeywordParamWhitespaceRight :: [Whitespace]
   , _unsafeKeywordParamExpr :: Expr v a
@@ -88,7 +96,7 @@ data Param (v :: [*]) a
   deriving (Eq, Show)
 instance HasExprs Param where
   _Exprs f (KeywordParam a name ws1 ws2 expr) =
-    KeywordParam a name <$> pure ws1 <*> pure ws2 <*> f expr
+    KeywordParam a (coerce name) <$> pure ws1 <*> pure ws2 <*> f expr
   _Exprs _ p@PositionalParam{} = pure $ coerce p
 
 data Arg (v :: [*]) a
@@ -98,7 +106,7 @@ data Arg (v :: [*]) a
   }
   | KeywordArg
   { _argAnn :: a
-  , _unsafeKeywordArgName :: String
+  , _unsafeKeywordArgName :: Ident v a
   , _unsafeKeywordArgWhitespaceLeft :: [Whitespace]
   , _unsafeKeywordArgWhitespaceRight :: [Whitespace]
   , _argExpr :: Expr v a
@@ -106,9 +114,9 @@ data Arg (v :: [*]) a
   deriving (Eq, Show)
 instance IsString (Arg '[] ()) where fromString = PositionalArg () . fromString
 argExpr :: Lens (Arg v a) (Arg '[] a) (Expr v a) (Expr '[] a)
-argExpr = lens _argExpr (\s a -> s { _argExpr = a })
+argExpr = lens _argExpr (\s a -> (coerce s) { _argExpr = a })
 instance HasExprs Arg where
-  _Exprs f (KeywordArg a name ws1 ws2 expr) = KeywordArg a name ws1 ws2 <$> f expr
+  _Exprs f (KeywordArg a name ws1 ws2 expr) = KeywordArg a (coerce name) ws1 ws2 <$> f expr
   _Exprs f (PositionalArg a expr) = PositionalArg a <$> f expr
 
 data Whitespace = Space | Tab | Continued Newline [Whitespace] deriving (Eq, Show)
@@ -119,7 +127,7 @@ class HasBlocks s where
   _Blocks :: Traversal (s v a) (s '[] a) (Block v a) (Block '[] a)
 instance HasBlocks Statement where
   _Blocks f (Fundef a ws1 name ws2 params ws3 ws4 nl b) =
-    Fundef a ws1 name ws2 (coerce params) ws3 ws4 nl <$> coerce (f b)
+    Fundef a ws1 (coerce name) ws2 (coerce params) ws3 ws4 nl <$> coerce (f b)
   _Blocks f (If a ws1 e1 ws2 ws3 nl b b') =
     If a ws1 (coerce e1) ws2 ws3 nl <$>
     coerce (f b) <*>
@@ -136,7 +144,7 @@ data Newline = CR | LF | CRLF deriving (Eq, Show)
 
 data Statement (v :: [*]) a
   = Fundef a
-      (NonEmpty Whitespace) String
+      (NonEmpty Whitespace) (Ident v a)
       [Whitespace] (CommaSep (Param v a))
       [Whitespace] [Whitespace] Newline
       (Block v a)
@@ -192,7 +200,7 @@ data Expr (v :: [*]) a
   , _unsafeDerefValueLeft :: Expr v a
   , _unsafeDerefWhitespaceLeft :: [Whitespace]
   , _unsafeDerefWhitespaceRight :: [Whitespace]
-  , _unsafeDerefValueRight :: String
+  , _unsafeDerefValueRight :: Ident v a
   }
   | Call
   { _exprAnnotation :: a
@@ -224,7 +232,7 @@ data Expr (v :: [*]) a
   }
   | Ident
   { _exprAnnotation :: a
-  , _unsafeIdentValue :: String
+  , _unsafeIdentValue :: Ident v a
   }
   | Int
   { _exprAnnotation :: a
@@ -240,7 +248,7 @@ data Expr (v :: [*]) a
   }
   deriving (Eq, Show)
 instance IsString (Expr '[] ()) where
-  fromString = Ident ()
+  fromString = Ident () . MkIdent ()
 instance Num (Expr '[] ()) where
   fromInteger = Int ()
   negate = Negate () []
@@ -282,7 +290,7 @@ class HasExprs s where
 
 instance HasExprs Statement where
   _Exprs f (Fundef a ws1 name ws2 params ws3 ws4 nl sts) =
-    Fundef a ws1 name ws2 <$>
+    Fundef a ws1 (coerce name) ws2 <$>
     (traverse._Exprs) f params <*>
     pure ws3 <*>
     pure ws4 <*>

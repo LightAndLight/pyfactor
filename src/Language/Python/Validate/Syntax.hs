@@ -25,6 +25,8 @@ import Language.Python.Validate.Syntax.Error
 
 data Syntax
 
+data SyntaxContext = SyntaxContext { _inLoop :: Bool }
+
 class StartsWith s where
   startsWith :: s -> Maybe Char
 
@@ -33,6 +35,18 @@ class EndsWith s where
 
 isIdentifierChar :: Char -> Bool
 isIdentifierChar = liftA2 (||) isLetter (=='_')
+
+validateIdent
+  :: ( AsSyntaxError e v a
+     , Member Indentation v
+     )
+  => Ident v a
+  -> Validate [e] (Ident (Nub (Syntax ': v)) a)
+validateIdent (MkIdent a name)
+  | not (all isAscii name) = Failure [_BadCharacter # (a, name)]
+  | null name = Failure [_EmptyIdentifier # a]
+  | name `elem` reservedWords = Failure [_IdentifierReservedWord # (a, name)]
+  | otherwise = Success $ MkIdent a name
 
 instance StartsWith (BinOp a) where
   startsWith Is{} = Just 'i'
@@ -64,7 +78,7 @@ instance StartsWith (Expr v a) where
   startsWith (BinOp _ e _ _ _ _) = startsWith e
   startsWith Negate{} = Just '-'
   startsWith Parens{} = Just '('
-  startsWith (Ident _ s) = s ^? _head
+  startsWith (Ident _ s) = _identValue s ^? _head
   startsWith (Int _ i) = show i ^? _head
   startsWith (Bool _ b) = show b ^? _head
   startsWith String{} = Just '"'
@@ -72,15 +86,15 @@ instance StartsWith (Expr v a) where
 instance EndsWith (Expr v a) where
   endsWith List{} = Just ']'
   endsWith (Deref _ _ _ _ s) =
-    case s of
+    case _identValue s of
       [] -> Just '.'
-      _ -> s ^? _last
+      s' -> s' ^? _last
   endsWith Call{} = Just ')'
   endsWith None{} = Just 'e'
   endsWith (BinOp _ _ _ _ _ e) = endsWith e
   endsWith (Negate _ _ e) = endsWith e
   endsWith Parens{} = Just ')'
-  endsWith (Ident _ s) = s ^? _last
+  endsWith (Ident _ s) = _identValue s ^? _last
   endsWith (Int _ i) = show i ^? _last
   endsWith (Bool _ b) = show b ^? _last
   endsWith String{} = Just '"'
@@ -119,9 +133,7 @@ validateExprSyntax (Bool a b) = pure $ Bool a b
 validateExprSyntax (Negate a ws expr) = Negate a ws <$> validateExprSyntax expr
 validateExprSyntax (String a b) = pure $ String a b
 validateExprSyntax (Int a n) = pure $ Int a n
-validateExprSyntax (Ident a name)
-  | name `elem` reservedWords = Failure [_IdentifierReservedWord # (a, name)]
-  | otherwise = pure $ Ident a name
+validateExprSyntax (Ident a name) = Ident a <$> validateIdent name
 validateExprSyntax (List a ws1 exprs ws2) =
   List a ws1 <$> traverse validateExprSyntax exprs <*> pure ws2
 validateExprSyntax (Deref a expr ws1 ws2 name) =
@@ -129,7 +141,7 @@ validateExprSyntax (Deref a expr ws1 ws2 name) =
   validateExprSyntax expr <*>
   pure ws1 <*>
   pure ws2 <*>
-  pure name
+  validateIdent name
 validateExprSyntax (Call a expr ws args) =
   Call a <$>
   validateExprSyntax expr <*>
@@ -167,7 +179,9 @@ validateStatementSyntax
   => Statement v a
   -> Validate [e] (Statement (Nub (Syntax ': v)) a)
 validateStatementSyntax (Fundef a ws1 name ws2 params ws3 ws4 nl body) =
-  Fundef a ws1 name ws2 <$>
+  Fundef a ws1 <$>
+  validateIdent name <*>
+  pure ws2 <*>
   validateParamsSyntax params <*>
   pure ws3 <*>
   pure ws4 <*>
@@ -236,12 +250,18 @@ validateArgsSyntax e = go [] False (toList e) $> coerce e
       in
         Failure errs <*> go names True args
     go names _ (KeywordArg a name ws1 ws2 expr : args)
-      | name `elem` names =
-          Failure [_DuplicateArgument # (a, name)] <*> go names True args
+      | _identValue name `elem` names =
+          Failure [_DuplicateArgument # (a, _identValue name)] <*>
+          validateIdent name <*>
+          go names True args
       | otherwise =
           liftA2 (:)
-            (KeywordArg a name ws1 ws2 <$> validateExprSyntax expr)
-            (go (name:names) True args)
+            (KeywordArg a <$>
+             validateIdent name <*>
+             pure ws1 <*>
+             pure ws2 <*>
+             validateExprSyntax expr)
+            (go (_identValue name:names) True args)
 
 validateParamsSyntax
   :: ( AsSyntaxError e v a
@@ -252,20 +272,31 @@ validateParamsSyntax e = go [] False (toList e) $> coerce e
   where
     go _ _ [] = pure []
     go names False (PositionalParam a name : params)
-      | name `elem` names = 
-          Failure [_DuplicateArgument # (a, name)] <*> go (name:names) False params
+      | _identValue name `elem` names =
+          Failure [_DuplicateArgument # (a, _identValue name)] <*>
+          validateIdent name <*>
+          go (_identValue name:names) False params
       | otherwise =
-          (PositionalParam a name :) <$> go (name:names) False params
+          liftA2
+            (:)
+            (PositionalParam a <$> validateIdent name)
+            (go (_identValue name:names) False params)
     go names True (PositionalParam a name : params) =
-      let errs =
-            [_DuplicateArgument # (a, name) | name `elem` names] <>
-            [_PositionalAfterKeywordParam # (a, name)]
+      let
+        name' = _identValue name
+        errs =
+            [_DuplicateArgument # (a, name') | name' `elem` names] <>
+            [_PositionalAfterKeywordParam # (a, name')]
       in
-        Failure errs <*> go (name:names) True params
+        Failure errs <*> go (name':names) True params
     go names _ (KeywordParam a name ws1 ws2 expr : params)
-      | name `elem` names =
-          Failure [_DuplicateArgument # (a, name)] <*> go names True params
+      | _identValue name `elem` names =
+          Failure [_DuplicateArgument # (a, _identValue name)] <*> go names True params
       | otherwise =
           liftA2 (:)
-            (KeywordParam a name ws1 ws2 <$> validateExprSyntax expr)
-            (go (name:names) True params)
+            (KeywordParam a <$>
+             validateIdent name <*>
+             pure ws1 <*>
+             pure ws2 <*>
+             validateExprSyntax expr)
+            (go (_identValue name:names) True params)

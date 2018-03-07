@@ -1,6 +1,8 @@
 {-# language DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
+{-# language TemplateHaskell #-}
 module Data.Validate where
 
+import Control.Lens.TH
 import Data.Semigroup
 
 data Validate e a
@@ -16,3 +18,5 @@ instance Semigroup e => Applicative (Validate e) where
     Failure $ case a of
       Success _ -> e
       Failure e' -> e <> e'
+
+makePrisms ''Validate
