@@ -77,7 +77,7 @@ validateStatementIndentation
   => Statement v a
   -> Validate [e] (Statement (Nub (Indentation ': v)) a)
 validateStatementIndentation (Fundef a ws1 name ws2 params ws3 ws4 nl body) =
-  Fundef a ws1 name ws2 <$>
+  Fundef a ws1 (coerce name) ws2 <$>
   validateParamsIndentation params <*>
   pure ws3 <*>
   pure ws4 <*>

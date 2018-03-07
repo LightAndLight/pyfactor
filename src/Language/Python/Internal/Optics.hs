@@ -22,7 +22,7 @@ instance Validated Block where
 data KeywordParam v a
   = MkKeywordParam
   { _kpAnn :: a
-  , _kpName :: String
+  , _kpName :: Ident v a
   , _kpWhitespaceLeft :: [Whitespace]
   , _kpWhitespaceRight :: [Whitespace]
   , _kpExpr :: Expr v a
@@ -47,13 +47,13 @@ _Fundef
        (Statement v a)
        (Statement '[] a)
        ( a
-       , NonEmpty Whitespace, String
+       , NonEmpty Whitespace, Ident v a
        , [Whitespace], CommaSep (Param v a)
        , [Whitespace], [Whitespace], Newline
        , Block v a
        )
        ( a
-       , NonEmpty Whitespace, String
+       , NonEmpty Whitespace, Ident '[] a
        , [Whitespace], CommaSep (Param '[] a)
        , [Whitespace], [Whitespace], Newline
        , Block '[] a
@@ -78,8 +78,8 @@ _Ident
   :: Prism
        (Expr v a)
        (Expr '[] a)
-       (a, String)
-       (a, String)
+       (a, Ident v a)
+       (a, Ident '[] a)
 _Ident =
   prism
     (uncurry Ident)

@@ -30,8 +30,8 @@ whitespace =
   (char '\t' $> Tab) <|>
   (Continued <$ char '\\' <*> newline <*> many whitespace)
 
-identifier :: (TokenParsing m, Monad m) => m String
-identifier = runUnspaced $ ident idStyle
+identifier :: (TokenParsing m, Monad m) => m (Untagged Ident Span)
+identifier = fmap (flip MkIdent) . runUnspaced $ ident idStyle
 
 commaSep :: (CharParsing m, Monad m) => m a -> m (CommaSep a)
 commaSep e = someCommaSep <|> pure CommaSepNone
@@ -53,11 +53,11 @@ parameter = kwparam <|> posparam
     kwparam =
       try
         ((\a b c d e -> KeywordParam e a b c d) <$>
-         identifier <*>
+         annotated identifier <*>
          many whitespace <*
          char '=') <*>
       many whitespace <*> expr
-    posparam = flip PositionalParam <$> identifier
+    posparam = flip PositionalParam <$> annotated identifier
 
 argument :: DeltaParsing m => m (Untagged Arg Span)
 argument = kwarg <|> posarg
@@ -65,7 +65,7 @@ argument = kwarg <|> posarg
     kwarg =
       try
         ((\a b c d e -> KeywordArg e a b c d) <$>
-         identifier <*>
+         annotated identifier <*>
          many whitespace <*
          char '=') <*>
       many whitespace <*> expr
@@ -80,7 +80,7 @@ expr = orExpr
       none <|>
       strLit <|>
       int <|>
-      (flip Ident <$> identifier) <|>
+      (flip Ident <$> annotated identifier) <|>
       list <|>
       parenthesis
 
@@ -167,7 +167,7 @@ expr = orExpr
           (\ws1 ws2 (str :~ s) a -> Deref (a ^. exprAnnotation <> s) a ws1 ws2 str) <$>
           try (many whitespace <* char '.') <*>
           many whitespace <*>
-          spanned identifier
+          spanned (annotated identifier)
         call =
           (\ws1 (csep :~ s) a -> Call (a ^. exprAnnotation <> s) a ws1 csep) <$>
           try (many whitespace <* char '(') <*>
@@ -233,7 +233,7 @@ statement =
       expr
     fundef =
       (\a b c d e f g h i -> Fundef i a b c d e f g h) <$
-      reserved "def" <*> some1 whitespace <*> identifier <*>
+      reserved "def" <*> some1 whitespace <*> annotated identifier <*>
       many whitespace <*> between (char '(') (char ')') (commaSep $ annotated parameter) <*>
       many whitespace <* char ':' <*> many whitespace <*> newline <*> block
     ifSt =

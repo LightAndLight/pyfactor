@@ -1,6 +1,7 @@
 {-# language DataKinds #-}
 module Generators where
 
+import Control.Applicative
 import Data.List.NonEmpty
 import Hedgehog
 import qualified Hedgehog.Gen as Gen
@@ -25,6 +26,9 @@ genWhitespaces1 = Gen.nonEmpty (Range.linear 1 10) genWhitespace
 
 genString :: MonadGen m => m String
 genString = Gen.list (Range.linear 0 100) Gen.unicode
+
+genIdent :: MonadGen m => m (Ident '[] ())
+genIdent = MkIdent () <$> genString
 
 genCommaSep :: MonadGen m => Range Int -> m a -> m (CommaSep a)
 genCommaSep r m = do
@@ -52,14 +56,14 @@ genArg :: MonadGen m => m (Arg '[] ())
 genArg =
   Gen.choice
     [ PositionalArg () <$> genExpr
-    , KeywordArg () <$> genString <*> genWhitespaces <*> genWhitespaces <*> genExpr
+    , KeywordArg () <$> genIdent <*> genWhitespaces <*> genWhitespaces <*> genExpr
     ]
 
 genParam :: MonadGen m => m (Param '[] ())
 genParam =
   Gen.choice
-    [ PositionalParam () <$> genString
-    , KeywordParam () <$> genString <*> genWhitespaces <*> genWhitespaces <*> genExpr
+    [ PositionalParam () <$> genIdent
+    , KeywordParam () <$> genIdent <*> genWhitespaces <*> genWhitespaces <*> genExpr
     ]
 
 genExpr :: MonadGen m => m (Expr '[] ())
@@ -72,7 +76,7 @@ genExpr =
     , genBinOp
     , genNegate
     , genParens
-    , Ident () <$> genString
+    , Ident () <$> genIdent
     , genInt
     , genBool
     , String () <$> genString
@@ -88,7 +92,7 @@ genExpr =
       Gen.small genExpr <*>
       genWhitespaces <*>
       genWhitespaces <*>
-      genString
+      genIdent
     genCall =
       Call () <$>
       Gen.small genExpr <*>
@@ -109,7 +113,20 @@ genExpr =
     genInt = Int () <$> Gen.integral (Range.constant (-2^16) (2^16))
 
 genBlock :: MonadGen m => Range Int -> m (Block '[] ())
-genBlock = undefined
+genBlock r = do
+  n <- Size <$> Gen.integral_ r
+  Block <$> Gen.sized (\s -> go (s `div` n) n)
+  where
+    go _ 0 = pure []
+    go s n =
+      liftA2
+        (:)
+        (Gen.resize s $
+         (,,,) () <$>
+         genWhitespaces <*>
+         genStatement <*>
+         Gen.maybe genNewline)
+        (go s $ n-1)
 
 genStatement :: MonadGen m => m (Statement '[] ())
 genStatement =
@@ -127,7 +144,7 @@ genStatement =
     genFundef =
       Fundef () <$>
       genWhitespaces1 <*>
-      genString <*>
+      genIdent <*>
       genWhitespaces <*>
       genCommaSep (Range.linear 0 10) genParam <*>
       genWhitespaces <*>

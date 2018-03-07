@@ -65,6 +65,9 @@ renderCommaSep f (CommaSepMany a ws1 ws2 c) =
   foldMap renderWhitespace ws1 <> "," <> foldMap renderWhitespace ws2 <>
   renderCommaSep f c
 
+renderIdent :: Ident v a -> String
+renderIdent = _identValue
+
 renderExpr :: Expr v a -> String
 renderExpr (Parens _ ws1 e ws2) =
   "(" <> foldMap renderWhitespace ws1 <>
@@ -79,7 +82,7 @@ renderExpr (Negate _ ws expr) =
       _ -> renderExpr expr
 renderExpr (String _ b) = show b
 renderExpr (Int _ n) = show n
-renderExpr (Ident _ name) = name
+renderExpr (Ident _ name) = renderIdent name
 renderExpr (List _ ws1 exprs ws2) =
   "[" <> foldMap renderWhitespace ws1 <>
   renderCommaSep renderExpr exprs <>
@@ -93,7 +96,7 @@ renderExpr (Deref _ expr ws1 ws2 name) =
     Int{} -> "(" <> renderExpr expr <> ")"
     _ -> renderExpr expr) <>
   foldMap renderWhitespace ws1 <> "." <> foldMap renderWhitespace ws2 <>
-  name
+  renderIdent name
 renderExpr (None _) = "None"
 renderExpr (BinOp _ e1 ws1 op ws2 e2) =
   let
@@ -143,7 +146,7 @@ renderStatement (Fundef _ ws1 name ws2 params ws3 ws4 nl body) =
   ManyLines firstLine nl restLines
   where
     firstLine =
-      "def" <> foldMap renderWhitespace ws1 <> name <>
+      "def" <> foldMap renderWhitespace ws1 <> renderIdent name <>
       foldMap renderWhitespace ws2 <> renderParams params <>
       foldMap renderWhitespace ws3 <> ":" <> foldMap renderWhitespace ws4
     restLines =
@@ -198,15 +201,15 @@ renderArgs a = "(" <> renderCommaSep go a <> ")"
   where
     go (PositionalArg _ expr) = renderExpr expr
     go (KeywordArg _ name ws1 ws2 expr) =
-      name <> foldMap renderWhitespace ws1 <> "=" <>
+      renderIdent name <> foldMap renderWhitespace ws1 <> "=" <>
       foldMap renderWhitespace ws2 <> renderExpr expr
 
 renderParams :: CommaSep (Param v a) -> String
 renderParams a = "(" <> renderCommaSep go a <> ")"
   where
-    go (PositionalParam _ name) = name
+    go (PositionalParam _ name) = renderIdent name
     go (KeywordParam _ name ws1 ws2 expr) =
-      name <>
+      renderIdent name <>
       foldMap renderWhitespace ws1 <> "=" <>
       foldMap renderWhitespace ws2 <> renderExpr expr
 

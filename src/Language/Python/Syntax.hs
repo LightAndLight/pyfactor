@@ -9,14 +9,14 @@ class HasPositional p v | p -> v where
   p_ :: v -> p
 
 class HasKeyword p where
-  k_ :: String -> Expr '[] () -> p
+  k_ :: Ident '[] () -> Expr '[] () -> p
 
-instance HasPositional (Param '[] ()) String where; p_ = PositionalParam ()
+instance HasPositional (Param '[] ()) (Ident '[] ()) where; p_ = PositionalParam ()
 instance HasKeyword (Param '[] ()) where; k_ a = KeywordParam () a [] []
 instance HasPositional (Arg '[] ()) (Expr '[] ()) where; p_ = PositionalArg ()
 instance HasKeyword (Arg '[] ()) where; k_ a = KeywordArg () a [] []
 
-def_ :: String -> [Param '[] ()] -> [Statement '[] ()] -> Statement '[] ()
+def_ :: Ident '[] () -> [Param '[] ()] -> [Statement '[] ()] -> Statement '[] ()
 def_ name params block =
   Fundef ()
     [Space]
@@ -100,7 +100,7 @@ infixl 7 .%
 (.**) a = BinOp () a [Space] (Exp ()) [Space]
 infixr 8 .**
 
-(/>) :: Expr '[] () -> String -> Expr '[] ()
+(/>) :: Expr '[] () -> Ident '[] () -> Expr '[] ()
 (/>) a = Deref () a [] []
 infixl 9 />
 
@@ -126,7 +126,7 @@ ifElse_ e sts sts' =
     (Just ([], [], LF, Block $ (\a -> (,,,) () [Space, Space, Space, Space] a $ Just LF) <$> sts'))
 
 var_ :: String -> Expr '[] ()
-var_ = Ident ()
+var_ = Ident () . MkIdent ()
 
 none_ :: Expr '[] ()
 none_ = None ()
