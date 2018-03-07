@@ -1,6 +1,7 @@
 {-# language DataKinds #-}
 module Generators where
 
+import Data.List.NonEmpty
 import Hedgehog
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
@@ -18,6 +19,9 @@ genWhitespace =
 
 genWhitespaces :: MonadGen m => m [Whitespace]
 genWhitespaces = Gen.list (Range.linear 0 10) genWhitespace
+
+genWhitespaces1 :: MonadGen m => m (NonEmpty Whitespace)
+genWhitespaces1 = Gen.nonEmpty (Range.linear 1 10) genWhitespace
 
 genString :: MonadGen m => m String
 genString = Gen.list (Range.linear 0 100) Gen.unicode
@@ -49,6 +53,13 @@ genArg =
   Gen.choice
     [ PositionalArg () <$> genExpr
     , KeywordArg () <$> genString <*> genWhitespaces <*> genWhitespaces <*> genExpr
+    ]
+
+genParam :: MonadGen m => m (Param '[] ())
+genParam =
+  Gen.choice
+    [ PositionalParam () <$> genString
+    , KeywordParam () <$> genString <*> genWhitespaces <*> genWhitespaces <*> genExpr
     ]
 
 genExpr :: MonadGen m => m (Expr '[] ())
@@ -96,3 +107,58 @@ genExpr =
     genNegate = Negate () <$> genWhitespaces <*> Gen.small genExpr
     genParens = Parens () <$> genWhitespaces <*> Gen.small genExpr <*> genWhitespaces
     genInt = Int () <$> Gen.integral (Range.constant (-2^16) (2^16))
+
+genBlock :: MonadGen m => Range Int -> m (Block '[] ())
+genBlock = undefined
+
+genStatement :: MonadGen m => m (Statement '[] ())
+genStatement =
+  Gen.choice
+    [ genFundef
+    , genReturn
+    , genEx
+    , genIf
+    , genWhile
+    , genAssign
+    , genPass
+    , genBreak
+    ]
+  where
+    genFundef =
+      Fundef () <$>
+      genWhitespaces1 <*>
+      genString <*>
+      genWhitespaces <*>
+      genCommaSep (Range.linear 0 10) genParam <*>
+      genWhitespaces <*>
+      genWhitespaces <*>
+      genNewline <*>
+      genBlock (Range.linear 0 20)
+    genReturn = Return () <$> genWhitespaces <*> Gen.small genExpr
+    genEx = Expr () <$> Gen.small genExpr
+    genIf =
+      If () <$>
+      genWhitespaces <*>
+      Gen.small genExpr <*>
+      genWhitespaces <*>
+      genWhitespaces <*>
+      genNewline <*>
+      genBlock (Range.linear 0 20) <*>
+      Gen.maybe
+        ((,,,) <$> genWhitespaces <*> genWhitespaces <*> genNewline <*> genBlock (Range.linear 0 20))
+    genWhile =
+      While () <$>
+      genWhitespaces <*>
+      Gen.small genExpr <*>
+      genWhitespaces <*>
+      genWhitespaces <*>
+      genNewline <*>
+      genBlock (Range.linear 0 20)
+    genPass = pure $ Pass ()
+    genBreak = pure $ Break ()
+    genAssign =
+      Assign () <$>
+      Gen.small genExpr <*>
+      genWhitespaces <*>
+      genWhitespaces <*>
+      Gen.small genExpr
