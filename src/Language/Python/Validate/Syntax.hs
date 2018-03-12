@@ -163,26 +163,28 @@ validateBlockSyntax
   :: ( AsSyntaxError e v a
      , Member Indentation v
      )
-  => Block v a
+  => SyntaxContext
+  -> Block v a
   -> Validate [e] (Block (Nub (Syntax ': v)) a)
-validateBlockSyntax (Block bs) = Block . NonEmpty.fromList <$> go (NonEmpty.toList bs)
+validateBlockSyntax ctxt (Block bs) = Block . NonEmpty.fromList <$> go (NonEmpty.toList bs)
   where
     go [] = error "impossible"
-    go [b] = pure <$> traverseOf _3 validateStatementSyntax b
+    go [b] = pure <$> traverseOf _3 (validateStatementSyntax ctxt) b
     go (b:bs) =
       (:) <$>
       (case b ^. _4 of
         Nothing -> Failure [_ExpectedNewlineAfter # b]
-        Just{} -> traverseOf _3 validateStatementSyntax b) <*>
+        Just{} -> traverseOf _3 (validateStatementSyntax ctxt) b) <*>
       (go bs)
 
 validateStatementSyntax
   :: ( AsSyntaxError e v a
      , Member Indentation v
      )
-  => Statement v a
+  => SyntaxContext
+  -> Statement v a
   -> Validate [e] (Statement (Nub (Syntax ': v)) a)
-validateStatementSyntax (Fundef a ws1 name ws2 params ws3 ws4 nl body) =
+validateStatementSyntax ctxt (Fundef a ws1 name ws2 params ws3 ws4 nl body) =
   Fundef a ws1 <$>
   validateIdent name <*>
   pure ws2 <*>
@@ -190,32 +192,32 @@ validateStatementSyntax (Fundef a ws1 name ws2 params ws3 ws4 nl body) =
   pure ws3 <*>
   pure ws4 <*>
   pure nl <*>
-  validateBlockSyntax body
-validateStatementSyntax (Return a ws expr) =
+  validateBlockSyntax ctxt body
+validateStatementSyntax ctxt (Return a ws expr) =
   Return a <$>
   validateWhitespace a ("return", id) ws (expr, renderExpr) <*>
   validateExprSyntax expr
-validateStatementSyntax (Expr a expr) =
+validateStatementSyntax ctxt (Expr a expr) =
   Expr a <$>
   validateExprSyntax expr
-validateStatementSyntax (If a ws1 expr ws2 ws3 nl body body') =
+validateStatementSyntax ctxt (If a ws1 expr ws2 ws3 nl body body') =
   If a <$>
   validateWhitespace a ("if", id) ws1 (expr, renderExpr) <*>
   validateExprSyntax expr <*>
   pure ws2 <*>
   pure ws3 <*>
   pure nl <*>
-  validateBlockSyntax body <*>
-  traverseOf (traverse._4) validateBlockSyntax body'
-validateStatementSyntax (While a ws1 expr ws2 ws3 nl body) =
+  validateBlockSyntax ctxt body <*>
+  traverseOf (traverse._4) (validateBlockSyntax ctxt) body'
+validateStatementSyntax ctxt (While a ws1 expr ws2 ws3 nl body) =
   While a <$>
   validateWhitespace a ("while", id) ws1 (expr, renderExpr) <*>
   validateExprSyntax expr <*>
   pure ws2 <*>
   pure ws3 <*>
   pure nl <*>
-  validateBlockSyntax body
-validateStatementSyntax (Assign a lvalue ws1 ws2 rvalue) =
+  validateBlockSyntax (ctxt { _inLoop = True}) body
+validateStatementSyntax ctxt (Assign a lvalue ws1 ws2 rvalue) =
   Assign a <$>
   (if canAssignTo lvalue
    then validateExprSyntax lvalue
@@ -223,8 +225,10 @@ validateStatementSyntax (Assign a lvalue ws1 ws2 rvalue) =
   pure ws1 <*>
   pure ws2 <*>
   validateExprSyntax rvalue
-validateStatementSyntax p@Pass{} = pure $ coerce p
-validateStatementSyntax p@Break{} = pure $ coerce p
+validateStatementSyntax ctxt p@Pass{} = pure $ coerce p
+validateStatementSyntax ctxt (Break a)
+  | _inLoop ctxt = pure $ Break a
+  | otherwise = Failure [_BreakOutsideLoop # a]
 
 canAssignTo :: Expr v a -> Bool
 canAssignTo None{} = False

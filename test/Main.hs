@@ -32,7 +32,7 @@ validateExprIndentation' = validateExprIndentation
 validateStatementSyntax'
   :: Statement '[Indentation] a
   -> Validate [SyntaxError '[Indentation] a] (Statement '[Syntax, Indentation] a)
-validateStatementSyntax' = validateStatementSyntax
+validateStatementSyntax' = validateStatementSyntax (SyntaxContext {_inLoop = False})
 
 validateStatementIndentation'
   :: Statement '[] a

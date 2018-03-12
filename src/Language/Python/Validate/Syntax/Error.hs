@@ -16,6 +16,7 @@ data SyntaxError (v :: [*]) a
   | IdentifierReservedWord a String
   | EmptyIdentifier a
   | BadCharacter a String
+  | BreakOutsideLoop a
   deriving (Eq, Show)
 
 makeClassyPrisms ''SyntaxError

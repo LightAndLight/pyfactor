@@ -11,75 +11,21 @@ import Language.Python.Validate.Indentation
 import Language.Python.Validate.Indentation.Error
 import Language.Python.Internal.Render
 
+runExample x =
+  case validateStatementIndentation x of
+    Failure errs -> print (errs :: [IndentationError '[] ()])
+    Success a ->
+      case validateStatementSyntax (SyntaxContext {_inLoop = False}) a of
+        Failure errs -> print (errs :: [SyntaxError '[Indentation] ()])
+        Success a' -> putStrLn . renderLines $ renderStatement a'
+
 main = do
-  let x = append_to ()
-  case validateStatementIndentation x of
-    Failure errs -> print (errs :: [IndentationError '[] ()])
-    Success a ->
-      case validateStatementSyntax a of
-        Failure errs -> print (errs :: [SyntaxError '[Indentation] ()])
-        Success a' -> putStrLn . renderLines $ renderStatement a'
-
-  let x = rewrite fixMDA append_to'
-  case validateStatementIndentation x of
-    Failure errs -> print (errs :: [IndentationError '[] ()])
-    Success a ->
-      case validateStatementSyntax a of
-        Failure errs -> print (errs :: [SyntaxError '[Indentation] ()])
-        Success a' -> putStrLn . renderLines $ renderStatement a'
-
-  let x = append_to'' ()
-  case validateStatementIndentation x of
-    Failure errs -> print (errs :: [IndentationError '[] ()])
-    Success a ->
-      case validateStatementSyntax a of
-        Failure errs -> print (errs :: [SyntaxError '[Indentation] ()])
-        Success a' -> putStrLn . renderLines $ renderStatement a'
-
-  let x = bracketing
-  case validateStatementIndentation x of
-    Failure errs -> print (errs :: [IndentationError '[] ()])
-    Success a ->
-      case validateStatementSyntax a of
-        Failure errs -> print (errs :: [SyntaxError '[Indentation] ()])
-        Success a' -> putStrLn . renderLines $ renderStatement a'
-
-  let x = indentSpaces 2 append_to'
-  case validateStatementIndentation x of
-    Failure errs -> print (errs :: [IndentationError '[] ()])
-    Success a ->
-      case validateStatementSyntax a of
-        Failure errs -> print (errs :: [SyntaxError '[Indentation] ()])
-        Success a' -> putStrLn . renderLines $ renderStatement a'
-
-  let x = indentTabs append_to'
-  case validateStatementIndentation x of
-    Failure errs -> print (errs :: [IndentationError '[] ()])
-    Success a ->
-      case validateStatementSyntax a of
-        Failure errs -> print (errs :: [SyntaxError '[Indentation] ()])
-        Success a' -> putStrLn . renderLines $ renderStatement a'
-
-  let x = rewrite optimize_tr fact_tr
-  case validateStatementIndentation x of
-    Failure errs -> print (errs :: [IndentationError '[] ()])
-    Success a ->
-      case validateStatementSyntax a of
-        Failure errs -> print (errs :: [SyntaxError '[Indentation] ()])
-        Success a' -> putStrLn . renderLines $ renderStatement a'
-
-  let x = rewrite optimize_tr spin
-  case validateStatementIndentation x of
-    Failure errs -> print (errs :: [IndentationError '[] ()])
-    Success a ->
-      case validateStatementSyntax a of
-        Failure errs -> print (errs :: [SyntaxError '[Indentation] ()])
-        Success a' -> putStrLn . renderLines $ renderStatement a'
-
-  let x = rewrite optimize_tr yes
-  case validateStatementIndentation x of
-    Failure errs -> print (errs :: [IndentationError '[] ()])
-    Success a ->
-      case validateStatementSyntax a of
-        Failure errs -> print (errs :: [SyntaxError '[Indentation] ()])
-        Success a' -> putStrLn . renderLines $ renderStatement a'
+  runExample (append_to ())
+  runExample (rewrite fixMDA append_to')
+  runExample (append_to'' ())
+  runExample bracketing
+  runExample (indentSpaces 2 append_to')
+  runExample (indentTabs append_to')
+  runExample (rewrite optimize_tr fact_tr)
+  runExample (rewrite optimize_tr spin)
+  runExample (rewrite optimize_tr yes)
