@@ -28,7 +28,11 @@ import Language.Python.Validate.Syntax.Error
 
 data Syntax
 
-data SyntaxContext = SyntaxContext { _inLoop :: Bool }
+data SyntaxContext
+  = SyntaxContext
+  { _inLoop :: Bool
+  , _inFunction :: Bool
+  }
 
 class StartsWith s where
   startsWith :: s -> Maybe Char
@@ -192,11 +196,13 @@ validateStatementSyntax ctxt (Fundef a ws1 name ws2 params ws3 ws4 nl body) =
   pure ws3 <*>
   pure ws4 <*>
   pure nl <*>
-  validateBlockSyntax ctxt body
-validateStatementSyntax ctxt (Return a ws expr) =
-  Return a <$>
-  validateWhitespace a ("return", id) ws (expr, renderExpr) <*>
-  validateExprSyntax expr
+  validateBlockSyntax (ctxt { _inFunction = True}) body
+validateStatementSyntax ctxt (Return a ws expr)
+  | _inFunction ctxt =
+      Return a <$>
+      validateWhitespace a ("return", id) ws (expr, renderExpr) <*>
+      validateExprSyntax expr
+  | otherwise = Failure [_ReturnOutsideFunction # a]
 validateStatementSyntax ctxt (Expr a expr) =
   Expr a <$>
   validateExprSyntax expr

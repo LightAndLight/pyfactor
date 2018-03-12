@@ -15,7 +15,7 @@ runExample x =
   case validateStatementIndentation x of
     Failure errs -> print (errs :: [IndentationError '[] ()])
     Success a ->
-      case validateStatementSyntax (SyntaxContext {_inLoop = False}) a of
+      case validateStatementSyntax (SyntaxContext {_inLoop = False, _inFunction = False}) a of
         Failure errs -> print (errs :: [SyntaxError '[Indentation] ()])
         Success a' -> putStrLn . renderLines $ renderStatement a'
 
