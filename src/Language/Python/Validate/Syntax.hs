@@ -41,7 +41,7 @@ class EndsWith s where
   endsWith :: s -> Maybe Char
 
 isIdentifierChar :: Char -> Bool
-isIdentifierChar = liftA2 (||) isLetter (=='_')
+isIdentifierChar = foldr (liftA2 (||)) (pure False)[isLetter, isDigit, (=='_')]
 
 validateIdent
   :: ( AsSyntaxError e v a
@@ -241,6 +241,11 @@ canAssignTo None{} = False
 canAssignTo Negate{} = False
 canAssignTo Int{} = False
 canAssignTo Call{} = False
+canAssignTo BinOp{} = False
+canAssignTo Bool{} = False
+canAssignTo (Parens _ _ a _) = canAssignTo a
+canAssignTo String{} = False
+canAssignTo (List _ _ a _) = all canAssignTo a
 canAssignTo _ = True
 
 validateArgsSyntax

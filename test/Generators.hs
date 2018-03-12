@@ -22,13 +22,13 @@ genWhitespace =
     [Continued <$> genNewline <*> genWhitespaces]
 
 genWhitespaces :: MonadGen m => m [Whitespace]
-genWhitespaces = Gen.list (Range.linear 0 10) genWhitespace
+genWhitespaces = Gen.list (Range.linear 0 5) genWhitespace
 
 genWhitespaces1 :: MonadGen m => m (NonEmpty Whitespace)
-genWhitespaces1 = Gen.nonEmpty (Range.linear 1 10) genWhitespace
+genWhitespaces1 = Gen.nonEmpty (Range.linear 1 5) genWhitespace
 
 genString :: MonadGen m => m String
-genString = Gen.list (Range.linear 0 100) Gen.unicode
+genString = Gen.list (Range.linear 0 50) Gen.unicode
 
 genIdent :: MonadGen m => m (Ident '[] ())
 genIdent = MkIdent () <$> genString
@@ -57,10 +57,9 @@ genCommaSep r m = do
 
 genArg :: MonadGen m => m (Arg '[] ())
 genArg =
-  Gen.choice
-    [ PositionalArg () <$> genExpr
-    , KeywordArg () <$> genIdent <*> genWhitespaces <*> genWhitespaces <*> genExpr
-    ]
+  Gen.recursive Gen.choice
+    [ PositionalArg () <$> genExpr ]
+    [ KeywordArg () <$> genIdent <*> genWhitespaces <*> genWhitespaces <*> genExpr ]
 
 genParam :: MonadGen m => m (Param '[] ())
 genParam =
@@ -71,48 +70,49 @@ genParam =
 
 genExpr :: MonadGen m => m (Expr '[] ())
 genExpr =
-  Gen.choice
-    [ genList
-    , genDeref
-    , genCall
-    , genNone
-    , genBinOp
-    , genNegate
-    , genParens
+  Gen.recursive Gen.choice
+    [ genNone
     , Ident () <$> genIdent
     , genInt
     , genBool
     , String () <$> genString
     ]
+    [ genList
+    , genDeref
+    , genCall
+    , genBinOp
+    , genNegate
+    , genParens
+    ]
   where
     genList =
       List () <$>
       genWhitespaces <*>
-      genCommaSep (Range.linear 0 10) (Gen.small genExpr) <*>
+      genCommaSep (Range.linear 0 5) genExpr <*>
       genWhitespaces
     genDeref =
       Deref () <$>
-      Gen.small genExpr <*>
+      genExpr <*>
       genWhitespaces <*>
       genWhitespaces <*>
       genIdent
     genCall =
       Call () <$>
-      Gen.small genExpr <*>
+      genExpr <*>
       genWhitespaces <*>
-      genCommaSep (Range.linear 0 10) genArg
+      genCommaSep (Range.linear 0 5) genArg
     genNone = pure $ None ()
     genBool = Bool () <$> Gen.bool
     genBinOp =
       BinOp () <$>
-      Gen.small genExpr <*>
+      genExpr <*>
       genWhitespaces <*>
       genOp <*>
       genWhitespaces <*>
-      Gen.small genExpr
+      genExpr
     genOp = Gen.element $ _opOperator <$> operatorTable
-    genNegate = Negate () <$> genWhitespaces <*> Gen.small genExpr
-    genParens = Parens () <$> genWhitespaces <*> Gen.small genExpr <*> genWhitespaces
+    genNegate = Negate () <$> genWhitespaces <*> genExpr
+    genParens = Parens () <$> genWhitespaces <*> genExpr <*> genWhitespaces
     genInt = Int () <$> Gen.integral (Range.constant (-2^16) (2^16))
 
 genBlock :: MonadGen m => Range Int -> m (Block '[] ())
@@ -134,15 +134,16 @@ genBlock r = do
 
 genStatement :: MonadGen m => m (Statement '[] ())
 genStatement =
-  Gen.choice
-    [ genFundef
-    , genReturn
+  Gen.recursive Gen.choice
+    [ genPass
+    , genBreak
+    , genAssign
     , genEx
+    , genReturn
+    ]
+    [ genFundef
     , genIf
     , genWhile
-    , genAssign
-    , genPass
-    , genBreak
     ]
   where
     genFundef =
@@ -150,36 +151,40 @@ genStatement =
       genWhitespaces1 <*>
       genIdent <*>
       genWhitespaces <*>
-      genCommaSep (Range.linear 0 10) genParam <*>
+      genCommaSep (Range.linear 0 5) genParam <*>
       genWhitespaces <*>
       genWhitespaces <*>
       genNewline <*>
-      genBlock (Range.linear 1 20)
-    genReturn = Return () <$> genWhitespaces <*> Gen.small genExpr
-    genEx = Expr () <$> Gen.small genExpr
+      genBlock (Range.exponential 1 5)
+    genReturn = Return () <$> genWhitespaces <*> genExpr
+    genEx = Expr () <$> genExpr
     genIf =
       If () <$>
       genWhitespaces <*>
-      Gen.small genExpr <*>
+      genExpr <*>
       genWhitespaces <*>
       genWhitespaces <*>
       genNewline <*>
-      genBlock (Range.linear 1 20) <*>
+      genBlock (Range.exponential 1 5) <*>
       Gen.maybe
-        ((,,,) <$> genWhitespaces <*> genWhitespaces <*> genNewline <*> genBlock (Range.linear 1 20))
+        ((,,,) <$>
+         genWhitespaces <*>
+         genWhitespaces <*>
+         genNewline <*>
+         genBlock (Range.exponential 1 5))
     genWhile =
       While () <$>
       genWhitespaces <*>
-      Gen.small genExpr <*>
+      genExpr <*>
       genWhitespaces <*>
       genWhitespaces <*>
       genNewline <*>
-      genBlock (Range.linear 1 20)
+      genBlock (Range.exponential 1 5)
     genPass = pure $ Pass ()
     genBreak = pure $ Break ()
     genAssign =
       Assign () <$>
-      Gen.small genExpr <*>
+      genExpr <*>
       genWhitespaces <*>
       genWhitespaces <*>
-      Gen.small genExpr
+      genExpr
