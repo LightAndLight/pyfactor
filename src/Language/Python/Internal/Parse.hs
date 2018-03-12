@@ -7,7 +7,7 @@ import Control.Lens hiding (List, argument)
 import Control.Monad.State
 import Data.Foldable
 import Data.Functor
-import Data.List.NonEmpty (some1)
+import Data.List.NonEmpty (NonEmpty(..), some1)
 import Data.Semigroup hiding (Arg)
 import Text.Parser.Token hiding (commaSep)
 import Text.Trifecta hiding (newline, commaSep)
@@ -190,7 +190,7 @@ dedent :: MonadState [[Whitespace]] m => m ()
 dedent = modify tail
 
 block :: (DeltaParsing m, MonadState [[Whitespace]] m) => m (Block '[] Span)
-block = fmap Block (liftA2 (:) first go) <* dedent
+block = fmap Block (liftA2 (:|) first go) <* dedent
   where
     first =
       (\(f :~ a) -> f a) <$>

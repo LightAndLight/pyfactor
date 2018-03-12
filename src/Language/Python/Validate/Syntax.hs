@@ -18,6 +18,9 @@ import Data.Functor
 import Data.Semigroup (Semigroup(..))
 import Data.Type.Set
 import Data.Validate
+
+import qualified Data.List.NonEmpty as NonEmpty
+
 import Language.Python.Internal.Render
 import Language.Python.Internal.Syntax
 import Language.Python.Validate.Indentation
@@ -162,15 +165,16 @@ validateBlockSyntax
      )
   => Block v a
   -> Validate [e] (Block (Nub (Syntax ': v)) a)
-validateBlockSyntax (Block []) = pure $ Block []
-validateBlockSyntax (Block [b]) = Block . pure <$> traverseOf _3 validateStatementSyntax b
-validateBlockSyntax (Block (b:bs)) =
-  fmap Block $
-  (:) <$>
-  (case b ^. _4 of
-     Nothing -> Failure [_ExpectedNewlineAfter # b]
-     Just{} -> traverseOf _3 validateStatementSyntax b) <*>
-  (fmap unBlock . validateBlockSyntax $ Block bs)
+validateBlockSyntax (Block bs) = Block . NonEmpty.fromList <$> go (NonEmpty.toList bs)
+  where
+    go [] = error "impossible"
+    go [b] = pure <$> traverseOf _3 validateStatementSyntax b
+    go (b:bs) =
+      (:) <$>
+      (case b ^. _4 of
+        Nothing -> Failure [_ExpectedNewlineAfter # b]
+        Just{} -> traverseOf _3 validateStatementSyntax b) <*>
+      (go bs)
 
 validateStatementSyntax
   :: ( AsSyntaxError e v a

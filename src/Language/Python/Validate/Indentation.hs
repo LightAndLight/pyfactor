@@ -8,6 +8,8 @@ import Data.Coerce
 import Data.Type.Set
 import Data.Validate
 
+import qualified Data.List.NonEmpty as NonEmpty
+
 import Language.Python.Internal.Syntax
 import Language.Python.Validate.Indentation.Error
 
@@ -35,8 +37,8 @@ validateBlockIndentation
   => Block v a
   -> Validate [e] (Block (Nub (Indentation ': v)) a)
 validateBlockIndentation a =
-  view (from _Wrapped) <$>
-  go Nothing (view _Wrapped a)
+  view (from _Wrapped) . NonEmpty.fromList <$>
+  go Nothing (NonEmpty.toList $ view _Wrapped a)
   where
     go _ [] = pure []
     go a ((ann, ws, st, nl):xs)

@@ -75,11 +75,16 @@ reserved s = runUnspaced $ reserve idStyle s
 
 data Ident (v :: [*]) a
   = MkIdent
-  { _identAnntoation :: a
+  { _identAnnotation :: a
   , _identValue :: String
   } deriving (Eq, Show, Functor)
 instance IsString (Ident '[] ()) where
   fromString = MkIdent ()
+identValue :: Lens (Ident v a) (Ident '[] a) String String
+identValue = lens _identValue (\s a -> s { _identValue = a })
+
+identAnnotation :: Lens (Ident v a) (Ident v a) a a
+identAnnotation = lens _identAnnotation (\s a -> s { _identAnnotation = a })
 
 data Param (v :: [*]) a
   = PositionalParam
@@ -121,7 +126,7 @@ instance HasExprs Arg where
 
 data Whitespace = Space | Tab | Continued Newline [Whitespace] deriving (Eq, Show)
 
-newtype Block v a = Block { unBlock :: [(a, [Whitespace], Statement v a, Maybe Newline)] }
+newtype Block v a = Block { unBlock :: NonEmpty (a, [Whitespace], Statement v a, Maybe Newline) }
   deriving (Eq, Show)
 class HasBlocks s where
   _Blocks :: Traversal (s v a) (s '[] a) (Block v a) (Block '[] a)

@@ -2,10 +2,13 @@
 module Generators where
 
 import Control.Applicative
+import Control.Monad
 import Data.List.NonEmpty
 import Hedgehog
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
+
+import qualified Data.List.NonEmpty as NonEmpty
 
 import Language.Python.Internal.Syntax
 
@@ -115,7 +118,8 @@ genExpr =
 genBlock :: MonadGen m => Range Int -> m (Block '[] ())
 genBlock r = do
   n <- Size <$> Gen.integral_ r
-  Block <$> Gen.sized (\s -> go (s `div` n) n)
+  when (n == 0) $ error "cannot generate block of size 0"
+  Block . NonEmpty.fromList <$> Gen.sized (\s -> go (s `div` n) n)
   where
     go _ 0 = pure []
     go s n =
@@ -150,7 +154,7 @@ genStatement =
       genWhitespaces <*>
       genWhitespaces <*>
       genNewline <*>
-      genBlock (Range.linear 0 20)
+      genBlock (Range.linear 1 20)
     genReturn = Return () <$> genWhitespaces <*> Gen.small genExpr
     genEx = Expr () <$> Gen.small genExpr
     genIf =
@@ -160,9 +164,9 @@ genStatement =
       genWhitespaces <*>
       genWhitespaces <*>
       genNewline <*>
-      genBlock (Range.linear 0 20) <*>
+      genBlock (Range.linear 1 20) <*>
       Gen.maybe
-        ((,,,) <$> genWhitespaces <*> genWhitespaces <*> genNewline <*> genBlock (Range.linear 0 20))
+        ((,,,) <$> genWhitespaces <*> genWhitespaces <*> genNewline <*> genBlock (Range.linear 1 20))
     genWhile =
       While () <$>
       genWhitespaces <*>
@@ -170,7 +174,7 @@ genStatement =
       genWhitespaces <*>
       genWhitespaces <*>
       genNewline <*>
-      genBlock (Range.linear 0 20)
+      genBlock (Range.linear 1 20)
     genPass = pure $ Pass ()
     genBreak = pure $ Break ()
     genAssign =
