@@ -232,6 +232,7 @@ validateStatementSyntax ctxt (Break a)
 
 canAssignTo :: Expr v a -> Bool
 canAssignTo None{} = False
+canAssignTo Negate{} = False
 canAssignTo _ = True
 
 validateArgsSyntax
