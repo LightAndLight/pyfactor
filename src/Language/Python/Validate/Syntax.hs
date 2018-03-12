@@ -240,6 +240,7 @@ canAssignTo :: Expr v a -> Bool
 canAssignTo None{} = False
 canAssignTo Negate{} = False
 canAssignTo Int{} = False
+canAssignTo Call{} = False
 canAssignTo _ = True
 
 validateArgsSyntax
