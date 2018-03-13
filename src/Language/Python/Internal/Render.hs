@@ -4,9 +4,49 @@ module Language.Python.Internal.Render where
 
 import Control.Lens.Getter
 import Control.Lens.Wrapped
+import Data.Char (ord)
 import Data.Foldable
 import Data.Semigroup (Semigroup(..))
 import Language.Python.Internal.Syntax
+
+escapeChars :: [Char]
+escapeChars = "\\\'\"\a\b\f\n\r\t\v"
+
+intToHex :: Int -> String
+intToHex n = go n []
+  where
+    go 0 = (++"0")
+    go 1 = (++"1")
+    go 2 = (++"2")
+    go 3 = (++"3")
+    go 4 = (++"4")
+    go 5 = (++"5")
+    go 6 = (++"6")
+    go 7 = (++"7")
+    go 8 = (++"8")
+    go 9 = (++"9")
+    go 10 = (++"A")
+    go 11 = (++"B")
+    go 12 = (++"C")
+    go 13 = (++"D")
+    go 14 = (++"E")
+    go 15 = (++"F")
+    go b = let (q, r) = quotRem b 16 in go r . go q
+
+renderChar :: Char -> String
+renderChar c
+  | c `elem` escapeChars = ['\\', c]
+  | otherwise =
+      let
+        shown = show c
+      in
+        case shown of
+          '\'' : '\\' : _ ->
+            let
+              hex = intToHex (ord c)
+            in
+              "\\U" ++ replicate (8 - length hex) '0' ++ hex
+          _ -> [c]
 
 data Lines a
   = NoLines
@@ -76,7 +116,7 @@ renderExpr (Negate _ ws expr) =
       BinOp _ _ _ Exp{} _ _ -> renderExpr expr
       BinOp{} -> "(" <> renderExpr expr <> ")"
       _ -> renderExpr expr
-renderExpr (String _ b) = show b
+renderExpr (String _ b) = "\"" ++ foldMap renderChar b ++ "\""
 renderExpr (Int _ n) = show n
 renderExpr (Ident _ name) = renderIdent name
 renderExpr (List _ ws1 exprs ws2) =

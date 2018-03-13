@@ -155,7 +155,7 @@ spin = def_ "spin" [] [expr_ $ call_ "spin" []]
 
 yes =
   def_ "yes" []
-  [ expr_ $ call_ "print" [p_ $ str_ "yes"]
+  [ expr_ $ call_ "print" [p_ $ str_ "yes\NAK"]
   , expr_ $ call_ "yes" []
   ]
 
