@@ -1,5 +1,5 @@
 { mkDerivation, base, hedgehog, lens, mtl, parsers, process, stdenv
-, trifecta, type-level-sets
+, transformers, trifecta, type-level-sets
 }:
 mkDerivation {
   pname = "pyfactor";
@@ -11,6 +11,6 @@ mkDerivation {
     base lens mtl parsers trifecta type-level-sets
   ];
   executableHaskellDepends = [ base lens ];
-  testHaskellDepends = [ base hedgehog lens process ];
+  testHaskellDepends = [ base hedgehog lens process transformers ];
   license = stdenv.lib.licenses.bsd3;
 }

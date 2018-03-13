@@ -2,13 +2,9 @@
 {-# language TemplateHaskell #-}
 module Language.Python.Internal.Render where
 
-import Control.Applicative
-import Control.Lens.Fold
 import Control.Lens.Getter
-import Control.Lens.Prism
 import Control.Lens.Wrapped
 import Data.Foldable
-import Data.Maybe
 import Data.Semigroup (Semigroup(..))
 import Language.Python.Internal.Syntax
 
@@ -94,50 +90,17 @@ renderExpr (Call _ expr ws args) =
 renderExpr (Deref _ expr ws1 ws2 name) =
   (case expr of
     Int{} -> "(" <> renderExpr expr <> ")"
+    BinOp{} -> "(" <> renderExpr expr <> ")"
     _ -> renderExpr expr) <>
   foldMap renderWhitespace ws1 <> "." <> foldMap renderWhitespace ws2 <>
   renderIdent name
 renderExpr (None _) = "None"
 renderExpr (BinOp _ e1 ws1 op ws2 e2) =
-  let
-    entry = lookupOpEntry op operatorTable
-
-    lEntry =
-      case e1 of
-        BinOp _ _ _ lOp _ _ -> Just $ lookupOpEntry lOp operatorTable
-        _ -> Nothing
-
-    rEntry =
-      case e2 of
-        BinOp _ _ _ rOp _ _ -> Just $ lookupOpEntry rOp operatorTable
-        _ -> Nothing
-
-    (e1f, e2f) =
-      case entry ^. opAssoc of
-        L | Just L <- rEntry ^? _Just.opAssoc -> (Nothing, Just bracket)
-        R | Just R <- lEntry ^? _Just.opAssoc -> (Just bracket, Nothing)
-        _ -> (Nothing, Nothing)
-
-    e1f' =
-      case (e1, op) of
-        (Negate{}, Exp{}) -> Just bracket
-        _ -> do
-          p <- lEntry ^? _Just.opPrec
-          if p < entry ^. opPrec
-          then Just bracket
-          else Nothing
-
-    e2f' = do
-      p <- rEntry ^? _Just.opPrec
-      if p < entry ^. opPrec
-      then Just bracket
-      else Nothing
-  in
-    fromMaybe id (e1f <|> e1f') (renderExpr e1) <>
-    foldMap renderWhitespace ws1  <>
-    renderBinOp op <>
-    foldMap renderWhitespace ws2 <>
-    fromMaybe id (e2f <|> e2f') (renderExpr e2)
+  (if shouldBracketLeft op e1 then bracket else id) (renderExpr e1) <>
+  foldMap renderWhitespace ws1  <>
+  renderBinOp op <>
+  foldMap renderWhitespace ws2 <>
+  (if shouldBracketRight op e2 then bracket else id) (renderExpr e2)
   where
     bracket a = "(" <> a <> ")"
 

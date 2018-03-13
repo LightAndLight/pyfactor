@@ -41,7 +41,10 @@ class EndsWith s where
   endsWith :: s -> Maybe Char
 
 isIdentifierChar :: Char -> Bool
-isIdentifierChar = foldr (liftA2 (||)) (pure False)[isLetter, isDigit, (=='_')]
+isIdentifierChar = foldr (liftA2 (||)) (pure False) [isIdentifierStart, isDigit]
+
+isIdentifierStart :: Char -> Bool
+isIdentifierStart = foldr (liftA2 (||)) (pure False) [isLetter, (=='_')]
 
 validateIdent
   :: ( AsSyntaxError e v a
@@ -122,10 +125,10 @@ validateWhitespace
   -> (y, y -> String)
   -> Validate [e] [Whitespace]
 validateWhitespace ann (a, aStr) [] (b, bStr)
-  | Just c1 <- endsWith a
-  , Just c2 <- startsWith b
-  , isIdentifierChar c1
+  | Just c2 <- endsWith a
+  , Just c3 <- startsWith b
   , isIdentifierChar c2
+  , isIdentifierChar c3
   = Failure [_MissingSpacesIn # (ann, aStr a, bStr b)]
 validateWhitespace _ _ ws _ = Success ws
 
@@ -158,9 +161,13 @@ validateExprSyntax (None a) = pure $ None a
 validateExprSyntax e@(BinOp a e1 ws1 op ws2 e2) =
   BinOp a <$>
   validateExprSyntax e1 <*>
-  validateWhitespace a (e1, renderExpr) ws1 (op, renderBinOp) <*>
+  (if shouldBracketLeft op e1
+   then pure ws1
+   else validateWhitespace a (e1, renderExpr) ws1 (op, renderBinOp)) <*>
   pure op <*>
-  validateWhitespace a (op, renderBinOp) ws2 (e2, renderExpr) <*>
+  (if shouldBracketRight op e2
+   then pure ws2
+   else validateWhitespace a (op, renderBinOp) ws2 (e2, renderExpr)) <*>
   validateExprSyntax e2
 
 validateBlockSyntax

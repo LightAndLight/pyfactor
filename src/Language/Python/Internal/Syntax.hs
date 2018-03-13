@@ -5,11 +5,13 @@
 module Language.Python.Internal.Syntax where
 
 import Control.Applicative
+import Control.Lens.Fold
 import Control.Lens.Getter
 import Control.Lens.Lens
 import Control.Lens.TH
 import Control.Lens.Tuple
 import Control.Lens.Plated
+import Control.Lens.Prism
 import Control.Lens.Traversal
 import Control.Lens.Wrapped
 import Data.Coerce
@@ -361,6 +363,47 @@ lookupOpEntry op =
     go op (x:xs)
       | x ^. opOperator == op = x
       | otherwise = go op xs
+
+shouldBracketLeft :: BinOp a -> Expr v a -> Bool
+shouldBracketLeft op left =
+  let
+    entry = lookupOpEntry op operatorTable
+
+    lEntry =
+      case left of
+        BinOp _ _ _ lOp _ _ -> Just $ lookupOpEntry lOp operatorTable
+        _ -> Nothing
+
+    leftf =
+      case entry ^. opAssoc of
+        R | Just R <- lEntry ^? _Just.opAssoc -> True
+        _ -> False
+
+    leftf' =
+      case (left, op) of
+        (Negate{}, Exp{}) -> True
+        _ -> maybe False (\p -> p < entry ^. opPrec) (lEntry ^? _Just.opPrec)
+  in
+    leftf || leftf'
+
+shouldBracketRight :: BinOp a -> Expr v a -> Bool
+shouldBracketRight op right =
+  let
+    entry = lookupOpEntry op operatorTable
+
+    rEntry =
+      case right of
+        BinOp _ _ _ rOp _ _ -> Just $ lookupOpEntry rOp operatorTable
+        _ -> Nothing
+
+    rightf =
+      case entry ^. opAssoc of
+        L | Just L <- rEntry ^? _Just.opAssoc -> True
+        _ -> False
+
+    rightf' = maybe False (\p -> p < entry ^. opPrec) (rEntry ^? _Just.opPrec)
+  in
+    rightf || rightf'
 
 makeWrapped ''Block
 makeLenses ''Expr
