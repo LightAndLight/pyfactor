@@ -10,8 +10,12 @@ import Control.Lens.Plated
 import Control.Lens.Prism
 import Control.Lens.Tuple
 import Data.Foldable
+import Data.List.NonEmpty (NonEmpty(..))
 import Data.Semigroup
 import GHC.Natural
+
+import qualified Data.List.NonEmpty as NonEmpty
+
 import Language.Python.Internal.Optics
 import Language.Python.Internal.Syntax
 import Language.Python.Syntax
@@ -27,7 +31,7 @@ append_to a =
     "append_to"
     []
     ( CommaSepMany (PositionalParam a "element") [] [] $
-      CommaSepOne (KeywordParam a "to" [] [] (List a [] CommaSepNone [])) Nothing
+      CommaSepOne (KeywordParam a "to" [] [] (List a [] CommaSepNone []))
     )
     []
     []
@@ -38,7 +42,7 @@ append_to a =
        , Expr a $
          Call a
            (Deref a (Ident a "to") [] [] "append") []
-           (CommaSepOne (PositionalArg a (Ident a "element")) Nothing)
+           (CommaSepOne $ PositionalArg a (Ident a "element"))
        , Just LF
        )
      , (a, replicate 4 Space, Return a [Space] (Ident a "to"), Just LF)
@@ -80,7 +84,7 @@ append_to'' a =
     "append_to"
     []
     ( CommaSepMany (PositionalParam a "element") [] [] $
-      CommaSepOne (KeywordParam a "to" [] [] (List a [] CommaSepNone [])) Nothing
+      CommaSepOne (KeywordParam a "to" [] [] (List a [] CommaSepNone []))
     )
     []
     []
@@ -91,9 +95,9 @@ append_to'' a =
        , Expr a $
          Call a
            (Deref a (Ident a "to") [] [] "append") []
-           (CommaSepOne (PositionalArg a (Ident a "element")) Nothing)
+           (CommaSepOne $ PositionalArg a (Ident a "element"))
        , Just LF)
-     , (a, replicate 4 Space ++ [Continued [Space, Space]], Return a [Space] (Ident a "to"), Just LF)
+     , (a, replicate 4 Space ++ [Continued LF [Space, Space]], Return a [Space] (Ident a "to"), Just LF)
      ])
 
 bracketing =
@@ -120,7 +124,7 @@ fixMDA input = do
   targetParam <- params' ^? folded._KeywordParam.filtered (isMutable._kpExpr)
 
   let
-    pname = targetParam ^. kpName
+    pname = targetParam ^. kpName.identValue
 
     newparams =
       params' & traverse._KeywordParam.filtered (isMutable._kpExpr).kpExpr .~ none_
@@ -129,7 +133,7 @@ fixMDA input = do
       if_ (var_ pname `is_` none_) [ var_ pname .= list_ [] ]
 
   pure $
-    def_ name newparams (fixed : (body ^.. _Statements))
+    def_ name newparams (fixed :| (body ^.. _Statements))
 
 indentSpaces :: Natural -> Statement v a -> Statement v a
 indentSpaces n = transform (_Indents .~ replicate (fromIntegral n) Space)
@@ -151,7 +155,7 @@ spin = def_ "spin" [] [expr_ $ call_ "spin" []]
 
 yes =
   def_ "yes" []
-  [ expr_ $ call_ "print" [p_ $ str_ "yes"]
+  [ expr_ $ call_ "print" [p_ $ str_ "yes\NAK"]
   , expr_ $ call_ "yes" []
   ]
 
@@ -160,25 +164,25 @@ optimize_tr st = do
   bodyLast <- toListOf (unvalidated._Statements) body ^? _last
   let
     params' = toList params
-    paramNames = _paramName <$> params'
-  if not $ hasTC name bodyLast
+    paramNames = (_identValue . _paramName) <$> params'
+  if not $ hasTC (name ^. identValue) bodyLast
     then Nothing
     else
       Just .
-      def_ name params' $
+      def_ name params' . NonEmpty.fromList $
         zipWith (\a b -> var_ (a <> "__tr") .= var_ b) paramNames paramNames <>
         [ "__res__tr" .= none_
-        , while_ true_ .
+        , while_ true_ . NonEmpty.fromList .
           transformOn (traverse._Exprs) (renameIn paramNames "__tr") $
-          (toListOf (unvalidated._Statements) body ^?! _init) <>
-          looped name paramNames bodyLast
+            (toListOf (unvalidated._Statements) body ^?! _init) <>
+            looped (name ^. identValue) paramNames bodyLast
         , return_ "__res__tr"
         ]
   where
     isTailCall :: String -> Expr '[] () -> Bool
     isTailCall name e
-      | anyOf (cosmos._Call._2._Ident._2) (== name) e
-      = (e ^? _Call._2._Ident._2) == Just name
+      | anyOf (cosmos._Call._2._Ident._2.identValue) (== name) e
+      = (e ^? _Call._2._Ident._2.identValue) == Just name
       | otherwise = False
 
     hasTC :: String -> Statement '[] () -> Bool
@@ -194,13 +198,13 @@ optimize_tr st = do
     renameIn :: [String] -> String -> Expr '[] () -> Expr '[] ()
     renameIn params suffix =
       transform
-        (_Ident._2 %~ (\a -> if a `elem` params then a <> suffix else a))
+        (_Ident._2.identValue %~ (\a -> if a `elem` params then a <> suffix else a))
 
     looped :: String -> [String] -> Statement '[] () -> [Statement '[] ()]
     looped name params r@(Return _ _ e) =
       case e ^? _Call of
         Just (_, f, _, args)
-          | Just name' <- f ^? _Ident._2
+          | Just name' <- f ^? _Ident._2.identValue
           , name' == name ->
               fmap (\a -> var_ (a <> "__tr__old") .= (var_ $ a <> "__tr")) params <>
               zipWith
@@ -216,14 +220,17 @@ optimize_tr st = do
           case sts' of
             Nothing ->
               [ if_ e
-                  ((toListOf _Statements sts ^?! _init) <>
+                  (NonEmpty.fromList $
+                   (toListOf _Statements sts ^?! _init) <>
                    looped name params (toListOf _Statements sts ^?! _last))
               ]
             Just (_, _, _, sts'') ->
               [ ifElse_ e
-                  ((toListOf _Statements sts ^?! _init) <>
+                  (NonEmpty.fromList $
+                   (toListOf _Statements sts ^?! _init) <>
                    looped name params (toListOf _Statements sts ^?! _last))
-                  ((toListOf _Statements sts'' ^?! _init) <>
+                  (NonEmpty.fromList $
+                   (toListOf _Statements sts'' ^?! _init) <>
                    looped name params (toListOf _Statements sts'' ^?! _last))
               ]
       | otherwise = [r]

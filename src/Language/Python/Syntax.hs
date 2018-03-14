@@ -3,6 +3,8 @@
 {-# language OverloadedLists #-}
 module Language.Python.Syntax where
 
+import Data.List.NonEmpty (NonEmpty)
+
 import Language.Python.Internal.Syntax
 
 class HasPositional p v | p -> v where
@@ -16,7 +18,7 @@ instance HasKeyword (Param '[] ()) where; k_ a = KeywordParam () a [] []
 instance HasPositional (Arg '[] ()) (Expr '[] ()) where; p_ = PositionalArg ()
 instance HasKeyword (Arg '[] ()) where; k_ a = KeywordArg () a [] []
 
-def_ :: Ident '[] () -> [Param '[] ()] -> [Statement '[] ()] -> Statement '[] ()
+def_ :: Ident '[] () -> [Param '[] ()] -> NonEmpty (Statement '[] ()) -> Statement '[] ()
 def_ name params block =
   Fundef ()
     [Space]
@@ -107,19 +109,19 @@ infixl 9 />
 neg :: Expr '[] () -> Expr '[] ()
 neg = negate
 
-if_ :: Expr '[] () -> [Statement '[] ()] -> Statement '[] ()
+if_ :: Expr '[] () -> NonEmpty (Statement '[] ()) -> Statement '[] ()
 if_ e sts =
   If () [Space] e [] [] LF
     (Block $ (\a -> (,,,) () [Space, Space, Space, Space] a $ Just LF) <$> sts)
     Nothing
 
-while_ :: Expr '[] () -> [Statement '[] ()] -> Statement '[] ()
+while_ :: Expr '[] () -> NonEmpty (Statement '[] ()) -> Statement '[] ()
 while_ e sts =
   While () [Space] e
     [] [] LF
     (Block $ (\a -> (,,,) () [Space, Space, Space, Space] a $ Just LF) <$> sts)
 
-ifElse_ :: Expr '[] () -> [Statement '[] ()] -> [Statement '[] ()] -> Statement '[] ()
+ifElse_ :: Expr '[] () -> NonEmpty (Statement '[] ()) -> NonEmpty (Statement '[] ()) -> Statement '[] ()
 ifElse_ e sts sts' =
   If () [Space] e [] [] LF
     (Block $ (\a -> (,,,) () [Space, Space, Space, Space] a $ Just LF) <$> sts)

@@ -2,15 +2,51 @@
 {-# language TemplateHaskell #-}
 module Language.Python.Internal.Render where
 
-import Control.Applicative
-import Control.Lens.Fold
 import Control.Lens.Getter
-import Control.Lens.Prism
 import Control.Lens.Wrapped
+import Data.Char (ord)
 import Data.Foldable
-import Data.Maybe
 import Data.Semigroup (Semigroup(..))
 import Language.Python.Internal.Syntax
+
+escapeChars :: [Char]
+escapeChars = "\\\'\"\a\b\f\n\r\t\v"
+
+intToHex :: Int -> String
+intToHex n = go n []
+  where
+    go 0 = (++"0")
+    go 1 = (++"1")
+    go 2 = (++"2")
+    go 3 = (++"3")
+    go 4 = (++"4")
+    go 5 = (++"5")
+    go 6 = (++"6")
+    go 7 = (++"7")
+    go 8 = (++"8")
+    go 9 = (++"9")
+    go 10 = (++"A")
+    go 11 = (++"B")
+    go 12 = (++"C")
+    go 13 = (++"D")
+    go 14 = (++"E")
+    go 15 = (++"F")
+    go b = let (q, r) = quotRem b 16 in go r . go q
+
+renderChar :: Char -> String
+renderChar c
+  | c `elem` escapeChars = ['\\', c]
+  | otherwise =
+      let
+        shown = show c
+      in
+        case shown of
+          '\'' : '\\' : _ ->
+            let
+              hex = intToHex (ord c)
+            in
+              "\\U" ++ replicate (8 - length hex) '0' ++ hex
+          _ -> [c]
 
 data Lines a
   = NoLines
@@ -80,7 +116,7 @@ renderExpr (Negate _ ws expr) =
       BinOp _ _ _ Exp{} _ _ -> renderExpr expr
       BinOp{} -> "(" <> renderExpr expr <> ")"
       _ -> renderExpr expr
-renderExpr (String _ b) = show b
+renderExpr (String _ b) = "\"" ++ foldMap renderChar b ++ "\""
 renderExpr (Int _ n) = show n
 renderExpr (Ident _ name) = renderIdent name
 renderExpr (List _ ws1 exprs ws2) =
@@ -94,50 +130,17 @@ renderExpr (Call _ expr ws args) =
 renderExpr (Deref _ expr ws1 ws2 name) =
   (case expr of
     Int{} -> "(" <> renderExpr expr <> ")"
+    BinOp{} -> "(" <> renderExpr expr <> ")"
     _ -> renderExpr expr) <>
   foldMap renderWhitespace ws1 <> "." <> foldMap renderWhitespace ws2 <>
   renderIdent name
 renderExpr (None _) = "None"
 renderExpr (BinOp _ e1 ws1 op ws2 e2) =
-  let
-    entry = lookupOpEntry op operatorTable
-
-    lEntry =
-      case e1 of
-        BinOp _ _ _ lOp _ _ -> Just $ lookupOpEntry lOp operatorTable
-        _ -> Nothing
-
-    rEntry =
-      case e2 of
-        BinOp _ _ _ rOp _ _ -> Just $ lookupOpEntry rOp operatorTable
-        _ -> Nothing
-
-    (e1f, e2f) =
-      case entry ^. opAssoc of
-        L | Just L <- rEntry ^? _Just.opAssoc -> (Nothing, Just bracket)
-        R | Just R <- lEntry ^? _Just.opAssoc -> (Just bracket, Nothing)
-        _ -> (Nothing, Nothing)
-
-    e1f' =
-      case (e1, op) of
-        (Negate{}, Exp{}) -> Just bracket
-        _ -> do
-          p <- lEntry ^? _Just.opPrec
-          if p < entry ^. opPrec
-          then Just bracket
-          else Nothing
-
-    e2f' = do
-      p <- rEntry ^? _Just.opPrec
-      if p < entry ^. opPrec
-      then Just bracket
-      else Nothing
-  in
-    fromMaybe id (e1f <|> e1f') (renderExpr e1) <>
-    foldMap renderWhitespace ws1  <>
-    renderBinOp op <>
-    foldMap renderWhitespace ws2 <>
-    fromMaybe id (e2f <|> e2f') (renderExpr e2)
+  (if shouldBracketLeft op e1 then bracket else id) (renderExpr e1) <>
+  foldMap renderWhitespace ws1  <>
+  renderBinOp op <>
+  foldMap renderWhitespace ws2 <>
+  (if shouldBracketRight op e2 then bracket else id) (renderExpr e2)
   where
     bracket a = "(" <> a <> ")"
 
